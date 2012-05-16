@@ -57,12 +57,12 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   const char *filename = 0;
 
   long buffer_size = tokenizer::BUFFER_SIZE;
-  long errors = tokenizer::ERROR_SKIP;
-  long normalise = 1;
-  long use_mmap = 0;
+  int errors = tokenizer::ERROR_SKIP;
+  int normalise = 1;
+  int use_mmap = 0;
 
   static const char *kwlist[] = {"source", "dest", "filename", "buffer_size", "errors", "normalise", "mmap", 0};
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OOsllll:tokenize", (char **)kwlist, &pysrc, &pydest, &filename, &buffer_size, &errors, &normalise, &use_mmap))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OOsliii:tokenize", (char **)kwlist, &pysrc, &pydest, &filename, &buffer_size, &errors, &normalise, &use_mmap))
     return 0;
   if (!pysrc && !filename)
     return PyErr_Format(PyExc_TypeError, "tokenize() requires either a source or filename argument");
@@ -71,7 +71,7 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   if (buffer_size <= 0)
     return PyErr_Format(PyExc_ValueError, "tokenize() buffer_size must be positive, %ld given", buffer_size);
   if (errors < tokenizer::ERROR_SKIP || errors > tokenizer::ERROR_THROW)
-    return PyErr_Format(PyExc_ValueError, "tokenize() unknown bad byte error handler, %ld given", errors);
+    return PyErr_Format(PyExc_ValueError, "tokenize() unknown bad byte error handler, %d given", errors);
 
   try {
     boost::scoped_ptr<tokenizer::PyStream> dest(pyobj2dest(pydest, normalise));
@@ -223,7 +223,7 @@ inittokenizer(void) {
 
   add_to_module(m, "Tokenizer", (PyObject *)&PyTokenizerType);
 
-  TokenError = PyErr_NewException((char *)"token.TokenError", 0, 0);
+  TokenError = PyErr_NewException((char *)"tokenizer.TokenError", 0, 0);
   add_to_module(m, "TokenError", TokenError);
 
   token_ERROR_SKIP = add_long_to_module(m, "ERROR_SKIP", tokenizer::ERROR_SKIP);

@@ -38,9 +38,8 @@ namespace schwa {
         if (!is_handled("add"))
           return;
 
-        Py_ssize_t pybegin = begin;
-        int pylen = len;
-
+        const Py_ssize_t pybegin = begin;
+        const Py_ssize_t pylen = len;
         PyObject *res = 0;
         if (norm)
           res = PyObject_CallMethod(_obj, (char *)"add", (char *)"ns#s", pybegin, raw, pylen, norm);
@@ -52,8 +51,8 @@ namespace schwa {
         if (!is_handled("error"))
           return;
 
-        Py_ssize_t pybegin = begin;
-        int pylen = len;
+        const Py_ssize_t pybegin = begin;
+        const Py_ssize_t pylen = len;
 
         PyObject_CallMethod(_obj, (char *)"error", (char *)"ns#", pybegin, raw, pylen);
       }
@@ -108,8 +107,8 @@ namespace schwa {
       }
 
       void add(Type type, const char *raw, offset_type begin, offset_type len, const char *norm=0) {
-        Py_ssize_t pybegin = begin;
-        int pylen = len;
+        const Py_ssize_t pybegin = begin;
+        const Py_ssize_t pylen = len;
 
         PyObject *res = 0;
         if (norm)
@@ -119,8 +118,8 @@ namespace schwa {
       }
 
       virtual void error(const char *raw, offset_type begin, offset_type len) {
-        Py_ssize_t pybegin = begin;
-        int pylen = len;
+        const Py_ssize_t pybegin = begin;
+        const Py_ssize_t pylen = len;
 
         PyObject_CallFunction(_func, (char *)"sns#", "error", pybegin, raw, pylen);
       }
