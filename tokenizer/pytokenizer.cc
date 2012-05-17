@@ -1,7 +1,7 @@
 /* -*- Mode: C++; indent-tabs-mode: nil -*- */
 #include <Python.h>
 
-#include <schwa/std.h>
+#include <schwa/base.h>
 #include <schwa/io/source.h>
 #include <schwa/io/sources/file.h>
 #include <schwa/tokenizer.h>
