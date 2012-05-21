@@ -119,6 +119,10 @@ class AnnotationMeta(DocrepMeta):
     x = AnnotationMeta.reg.get(klass_name)
     return x and x[1]
 
+  @staticmethod
+  def clear_cache():
+    AnnotationMeta.reg.clear()
+
 
 class Base(object):
   __metaclass__ = AnnotationMeta
@@ -143,23 +147,22 @@ class Base(object):
         kwargs[k] = f.from_wire(v)
     return klass(**kwargs)
 
-  FIELD_MSG_TEMPLATE = 'Field {0!r} which refers to class name {1!r}'
-
   @classmethod
   def find_unfulfilled(klass):
     """
     Returns an unfulfilled field where available, otherwise None
     """
+    FIELD_MSG_TEMPLATE = 'Field {0!r} which refers to class name {1!r}'
     for name, field in klass._dr_fields.iteritems():
       if not field.is_fulfilled():
         if hasattr(field, 'klass_name'):
-          yield klass.FIELD_MSG_TEMPLATE.format(name, field.klass_name)
+          yield FIELD_MSG_TEMPLATE.format(name, field.klass_name)
         else:
           yield name
     for name, store in klass._dr_stores.iteritems():
       if not store.is_fulfilled():
         if hasattr(store, 'klass_name'):
-          yield klass.FIELD_MSG_TEMPLATE.format(name, store.klass_name)
+          yield FIELD_MSG_TEMPLATE.format(name, store.klass_name)
         else:
           yield name
 
