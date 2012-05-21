@@ -6,6 +6,7 @@ from schwa import dr
 class Document(dr.Document):
   annots = dr.Store('MyAnnot')
   slices = dr.Store('SliceAnnot')
+  super_slices = dr.Store('SuperSliceAnnot')
   favourites = dr.Pointers('MyAnnot')
 
 class MyAnnot(dr.Annotation):
@@ -22,6 +23,9 @@ class SliceAnnot(dr.Annotation):
 
   def __repr__(self):
     return '{}(span={}, name={})'.format(self.__class__.__name__, self.span, self.name)
+
+class SuperSliceAnnot(dr.Annotation):
+  slice_span = dr.Slice('SliceAnnot')
 
 
 class SliceDecoratorsTest(TestCase):
@@ -124,6 +128,31 @@ class SliceDecoratorsTest(TestCase):
 
   def test_reverse_overlapping_slices_with_o(self):
     self.test_reverse_overlapping_slices(mark_outside=True)
+
+  def test_convert_slices(self):
+    self.doc.super_slices.create(slice_span=slice(0, 1))
+    self.doc.super_slices.create(slice_span=slice(1, 2))
+    self.doc.super_slices.create(slice_span=slice(0, 2))
+    self.doc.super_slices.create()
+
+    decorate = dr.decorators.convert_slices('super_slices', 'slices', 'slice_span', 'span', 'myannot_span')
+
+    for ss in self.doc.super_slices:
+      self.assertFalse(hasattr(ss, 'myannot_span'))
+    
+    decorate(self.doc)
+
+    EXPECTED = [
+      slice(self.doc.slices[0].span.start, self.doc.slices[0].span.stop),
+      slice(self.doc.slices[1].span.start, self.doc.slices[1].span.stop),
+      slice(self.doc.slices[0].span.start, self.doc.slices[1].span.stop),
+      None
+    ]
+
+    for i, ss in enumerate(self.doc.super_slices):
+      print 'SuperSlice', i
+      self.assertEqual(ss.myannot_span, EXPECTED[i])
+    self.assertEqual(i, 3)
 
 
 class PointerDecoratorTest(TestCase):
