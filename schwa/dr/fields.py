@@ -121,7 +121,7 @@ class BaseStore(BaseAttr):
 
 class Store(BaseStore):
   """
-  A Store houses BaseField instances. For a BaseField to be serialised, it needs
+  A Store houses Annotation instances. For an Annotation to be serialised, it needs
   to be placed into a Store.
   """
   __slots__ = ('klass_name', '_klass')

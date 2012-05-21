@@ -136,7 +136,10 @@ class WireType(object):
 
     dr_fields = dict((f.name, f.dr_field()) for f in self.fields)
     if klass is None:
-      klass = type(klass_name, (Annotation, ), dr_fields)
+      if self.is_meta:
+        klass = type(klass_name, (Document, ), dr_fields)
+      else:
+        klass = type(klass_name, (Annotation, ), dr_fields)
     else:
       klass.update_attrs(dr_fields)
     self._klass = klass
