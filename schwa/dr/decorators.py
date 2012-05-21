@@ -1,3 +1,4 @@
+import types
 from operator import attrgetter
 from .decoration import Decorator
 
@@ -134,6 +135,42 @@ class reverse_slices(Decorator):
           bilou = 'I'
         self.set_bilou(target, bilou)
         self.set_all(target, (source, i, bilou))
+
+
+class convert_slices(Decorator):
+  """
+  Augments source_store objects with new_slice_attr, whose value corresponds to
+  source_slice_attr over the finer granularity indicated by target_slice_attr.
+
+  For example, if Sentence.span is a Slice over Token objects, and Token.span
+  indicates a Slice over raw text, this decorator could be used to augment
+  Sentence objects with Slice attributes over raw text.
+  """
+  def __init__(self, source_store, target_store, source_slice_attr, target_slice_attr, new_slice_attr):
+    super(convert_slices, self).__init__(self._build_key(source_store, target_store, source_slice_attr, target_slice_attr, new_slice_attr))
+    self.get_source_store = _storegetter(source_store)
+    self.get_target_store = _storegetter(target_store)
+    self.get_source_slice = attrgetter(source_slice_attr)
+    self.get_target_slice = attrgetter(target_slice_attr)
+    self.set_new_slice = _attrsetter(new_slice_attr)
+
+  def decorate(self, doc):
+    targets = self.get_target_store(doc)
+    for source in self.get_source_store(doc):
+      source_slice = self.get_source_slice(source)
+      try:
+        start = source_slice.start
+        stop = source_slice.stop
+      except AttributeError:
+        self.set_new_slice(source, None)
+        continue
+
+      start = self.get_target_slice(targets[start])
+      stop = self.get_target_slice(targets[stop - 1])
+      try:
+        self.set_new_slice(source, slice(start.start, stop.stop))
+      except AttributeError:
+        self.set_new_slice(source, None)
 
 
 class reverse_pointers(Decorator):
