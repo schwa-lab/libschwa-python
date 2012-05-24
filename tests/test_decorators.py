@@ -370,6 +370,20 @@ class BuildIndexTest(TestCase):
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
 
+  def test_missing_key(self):
+    self.doc.slices.create(span=None)
+    decorate = dr.decorators.build_index('slices', 'span.start', 'test_index')
+
+    self.assertFalse(hasattr(self.doc, 'test_index'))
+
+    decorate(self.doc)
+
+    EXPECTED = {
+        0: self.doc.slices[0],
+        1: self.doc.slices[1],
+    }
+    self.assertEqual(self.doc.test_index, EXPECTED)
+
 
 class StoreSubsetTest(TestCase):
   """Tests using a function instead of an attribute as a store reference"""
