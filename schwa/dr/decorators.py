@@ -99,7 +99,13 @@ class build_index(Decorator):
 
     for i, obj in enumerate(self.get_objects(doc)):
       val = i if self.by_index else obj
-      keys = self.get_key(obj)
+      try:
+        keys = self.get_key(obj)
+      except AttributeError:
+        # Is this correct behaviour?
+        # Or should users ensure all objects in the store have the appropriate attribute?
+        # WARNING: This behaviour may hide true AttributeErrors
+        continue
       if isinstance(keys, (types.StringTypes, types.TupleType)) or not hasattr(keys, '__iter__'):
         keys = (keys,)
       for key in keys:
