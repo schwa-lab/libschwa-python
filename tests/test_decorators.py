@@ -318,7 +318,7 @@ class BuildIndexTest(TestCase):
     self.doc.slices.create(span=slice(1, 2))
 
   def test_single_key(self):
-    decorate = dr.decorators.build_index('test_index', 'span.start', 'slices')
+    decorate = dr.decorators.build_index('slices', 'span.start', 'test_index')
 
     self.assertFalse(hasattr(self.doc, 'test_index'))
 
@@ -331,7 +331,7 @@ class BuildIndexTest(TestCase):
     self.assertEqual(self.doc.test_index, EXPECTED)
 
   def test_multi_key(self):
-    decorate = dr.decorators.build_index('test_index', 'field', 'annots')
+    decorate = dr.decorators.build_index('annots', 'field', 'test_index')
 
     self.assertFalse(hasattr(self.doc, 'test_index'))
 
@@ -345,7 +345,7 @@ class BuildIndexTest(TestCase):
     self.assertEqual(self.doc.test_index, EXPECTED)
 
   def test_by_index(self):
-    decorate = dr.decorators.build_index('test_index', 'field', 'annots', by_index=True)
+    decorate = dr.decorators.build_index('annots', 'field', 'test_index', by_index=True)
 
     self.assertFalse(hasattr(self.doc, 'test_index'))
 
@@ -359,7 +359,7 @@ class BuildIndexTest(TestCase):
     self.assertEqual(self.doc.test_index, EXPECTED)
 
   def test_multi_value(self):
-    decorate = dr.decorators.build_multi_index('test_index', 'span.stop', 'slices')
+    decorate = dr.decorators.build_multi_index('slices', 'span.stop', 'test_index')
 
     self.assertFalse(hasattr(self.doc, 'test_index'))
 
