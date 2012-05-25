@@ -81,7 +81,7 @@ class SentenceColumnWriter(AbstractColumnWriter):
       yield u''
 
   def on_begin_doc(self, doc, lines):
-    lines.append(u'# begin %s' % doc.id)
+    lines.append(u'# begin %s' % doc.docid if hasattr(doc, 'docid') else None)
 
 
 class NodeColumnWriter(AbstractColumnWriter):
