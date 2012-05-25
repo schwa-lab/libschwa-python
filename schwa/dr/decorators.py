@@ -1,5 +1,8 @@
+from __future__ import absolute_import
 import types
+from collections import defaultdict
 from operator import attrgetter
+from functools import partial
 from .decoration import Decorator
 
 def _attrsetter(attr):
@@ -28,6 +31,12 @@ def _attrappender(attr):
   return fn
 
 
+def _attrgetter(attr):
+  if callable(attr):
+    return attr
+  return attrgetter(attr)
+
+
 def _storegetter(store):
   """
   Allows decorator arguments referring to a store of objects either to be a
@@ -41,7 +50,9 @@ def _storegetter(store):
 
 
 class add_prev_next(Decorator):
-  """Adds prev and next pointers or None where N/A. Also may add index."""
+  """
+  Adds prev and next pointers or None where N/A. Also may add index.
+  """
   def __init__(self, store, prev_attr='prev', next_attr='next', index_attr=None):
     super(add_prev_next, self).__init__(self._build_key(store, prev_attr, next_attr, index_attr))
     self.get_store = _storegetter(store)
@@ -59,6 +70,53 @@ class add_prev_next(Decorator):
       prev = item
     if prev:
       self.set_next(prev, None)
+
+
+class build_index(Decorator):
+  """
+  Constructs an index over a selected field (key_attr) from a given object
+  store, and stores it on the document at index_attr. By default the index
+  maps from a keys to single object. If the extracted key is iterable and
+  is not a string or tuple, multiple keys will be mapped for the object.
+  
+  Setting by_index=True will map to the object's offset in the given store
+  instead of the object itself. The construct and add_entry arguments may define
+  an arbitrary indexing structure.
+  """
+  def __init__(self, store, key_attr, index_attr, construct=dict, add_entry='__setitem__', by_index=False):
+    super(build_index, self).__init__(self._build_key(index_attr, key_attr, store, construct, add_entry, by_index))
+    self.get_objects = _storegetter(store)
+    self.set_index = _attrsetter(index_attr)
+    self.get_key = _attrgetter(key_attr)
+    self.construct_index = construct
+    self.get_add_entry = _attrgetter(add_entry)
+    self.by_index = by_index
+
+  def decorate(self, doc):
+    res = self.construct_index()
+    self.set_index(doc, res)
+    add_entry = self.get_add_entry(res)
+
+    for i, obj in enumerate(self.get_objects(doc)):
+      val = i if self.by_index else obj
+      try:
+        keys = self.get_key(obj)
+      except AttributeError:
+        # Is this correct behaviour?
+        # Or should users ensure all objects in the store have the appropriate attribute?
+        # WARNING: This behaviour may hide true AttributeErrors
+        continue
+      if isinstance(keys, (types.StringTypes, types.TupleType)) or not hasattr(keys, '__iter__'):
+        keys = (keys,)
+      for key in keys:
+        add_entry(key, val)
+
+
+class build_multi_index(build_index):
+  def __init__(self, *args, **kwargs):
+    kwargs['construct'] = partial(defaultdict, set)
+    kwargs['add_entry'] = lambda index: lambda key, val: index[key].add(val)
+    super(build_multi_index, self).__init__(*args, **kwargs)
 
 
 class materialise_slices(Decorator):

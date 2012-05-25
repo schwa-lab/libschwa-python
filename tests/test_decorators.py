@@ -308,6 +308,83 @@ class PrevNextIndexTest(TestCase):
     for i, a in enumerate(self.doc.annots):
       self.assertEqual(i, a.index)
 
+
+class BuildIndexTest(TestCase):
+  def setUp(self):
+    self.doc = Document()
+    self.doc.annots.create(field=['dog', 'cat'])
+    self.doc.annots.create(field=['mouse'])
+    self.doc.slices.create(span=slice(0, 2))
+    self.doc.slices.create(span=slice(1, 2))
+
+  def test_single_key(self):
+    decorate = dr.decorators.build_index('slices', 'span.start', 'test_index')
+
+    self.assertFalse(hasattr(self.doc, 'test_index'))
+
+    decorate(self.doc)
+
+    EXPECTED = {
+        0: self.doc.slices[0],
+        1: self.doc.slices[1],
+    }
+    self.assertEqual(self.doc.test_index, EXPECTED)
+
+  def test_multi_key(self):
+    decorate = dr.decorators.build_index('annots', 'field', 'test_index')
+
+    self.assertFalse(hasattr(self.doc, 'test_index'))
+
+    decorate(self.doc)
+
+    EXPECTED = {
+        'dog': self.doc.annots[0],
+        'cat': self.doc.annots[0],
+        'mouse': self.doc.annots[1],
+    }
+    self.assertEqual(self.doc.test_index, EXPECTED)
+
+  def test_by_index(self):
+    decorate = dr.decorators.build_index('annots', 'field', 'test_index', by_index=True)
+
+    self.assertFalse(hasattr(self.doc, 'test_index'))
+
+    decorate(self.doc)
+
+    EXPECTED = {
+        'dog': 0,
+        'cat': 0,
+        'mouse': 1,
+    }
+    self.assertEqual(self.doc.test_index, EXPECTED)
+
+  def test_multi_value(self):
+    decorate = dr.decorators.build_multi_index('slices', 'span.stop', 'test_index')
+
+    self.assertFalse(hasattr(self.doc, 'test_index'))
+
+    decorate(self.doc)
+
+    EXPECTED = {
+        2: set((self.doc.slices[0], self.doc.slices[1]))
+    }
+    self.assertEqual(self.doc.test_index, EXPECTED)
+
+  def test_missing_key(self):
+    self.doc.slices.create(span=None)
+    decorate = dr.decorators.build_index('slices', 'span.start', 'test_index')
+
+    self.assertFalse(hasattr(self.doc, 'test_index'))
+
+    decorate(self.doc)
+
+    EXPECTED = {
+        0: self.doc.slices[0],
+        1: self.doc.slices[1],
+    }
+    self.assertEqual(self.doc.test_index, EXPECTED)
+
+
 class StoreSubsetTest(TestCase):
   """Tests using a function instead of an attribute as a store reference"""
 
