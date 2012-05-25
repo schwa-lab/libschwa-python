@@ -1,13 +1,12 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim: set ts=2 sw=2 et:
-
-import sys
 from abc import ABCMeta, abstractmethod
+import sys
+
 
 class Column(object):
-  """ Handles column output, wrapping a function that takes a token, returning the value.
-  """
+  """ Handles column output, wrapping a function that takes a token, returning the value. """
+
   def __init__(self, func, id_delimiter='', default=''):
     self.func = func
     self.id_delimiter = id_delimiter
@@ -32,10 +31,11 @@ class Column(object):
     """ Columns should be flushed if ids need to be reset between docs. """
     self.ids = {}
 
+
 class AbstractColumnWriter(object):
-  """ One token per line with other attributes as columns.
-  """
+  """ One token per line with other attributes as columns. """
   __metaclass__ = ABCMeta
+
   def __init__(self, columns, output=sys.stdout, delimiter=u'\t', encoding='utf-8', exclude=lambda t: False, between=u'\n'):
     assert all(isinstance(c, Column) for c in columns)
     self.output = output
@@ -68,8 +68,10 @@ class AbstractColumnWriter(object):
     """ Hook for adding lines after a Document. """
     pass
 
+
 class SentenceColumnWriter(AbstractColumnWriter):
   """ Writes one line per token. Sentences are split with an empty line. """
+
   def iter_lines(self, doc):
     for s in doc.sentences:
       for token in doc.tokens[s.span]:
@@ -80,6 +82,7 @@ class SentenceColumnWriter(AbstractColumnWriter):
 
   def on_begin_doc(self, doc, lines):
     lines.append(u'# begin %s' % doc.id)
+
 
 class NodeColumnWriter(AbstractColumnWriter):
   def iter_lines(self, doc):

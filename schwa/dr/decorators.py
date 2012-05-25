@@ -1,15 +1,19 @@
 from __future__ import absolute_import
-import types
 from collections import defaultdict
-from operator import attrgetter
 from functools import partial
+from operator import attrgetter
+from types import StringTypes, TupleType
+
 from .decoration import Decorator
+
 
 def _attrsetter(attr):
   if attr is None:
     return lambda obj, val: None
+
   def fn(obj, val):
     setattr(obj, attr, val)
+
   # Set a default value like any other value
   fn.default = fn
   return fn
@@ -18,6 +22,7 @@ def _attrsetter(attr):
 def _attrappender(attr):
   if attr is None:
     return lambda obj, val: None
+
   def fn(obj, val):
     try:
       getattr(obj, attr).append(val)
@@ -27,7 +32,7 @@ def _attrappender(attr):
   # Do not set a default value, just initialise the list
   def default_fn(obj, val):
     setattr(obj, attr, [])
-  fn.default = default_fn 
+  fn.default = default_fn
   return fn
 
 
@@ -78,7 +83,7 @@ class build_index(Decorator):
   store, and stores it on the document at index_attr. By default the index
   maps from a keys to single object. If the extracted key is iterable and
   is not a string or tuple, multiple keys will be mapped for the object.
-  
+
   Setting by_index=True will map to the object's offset in the given store
   instead of the object itself. The construct and add_entry arguments may define
   an arbitrary indexing structure.
@@ -106,7 +111,7 @@ class build_index(Decorator):
         # Or should users ensure all objects in the store have the appropriate attribute?
         # WARNING: This behaviour may hide true AttributeErrors
         continue
-      if isinstance(keys, (types.StringTypes, types.TupleType)) or not hasattr(keys, '__iter__'):
+      if isinstance(keys, (StringTypes, TupleType)) or not hasattr(keys, '__iter__'):
         keys = (keys,)
       for key in keys:
         add_entry(key, val)
@@ -264,4 +269,3 @@ class reverse_pointers(Decorator):
           self.set_rev(target_item, source)
       else:
         self.set_rev(target, source)
-
