@@ -60,6 +60,7 @@ def requires_decoration(*decorators, **kwargs):
   doc_kwarg = kwargs.pop('doc_kwarg', 'doc')
   if kwargs:
     raise ValueError("Got unexpected keyword arguments: {}".format(kwargs.keys()))
+
   def dec(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
