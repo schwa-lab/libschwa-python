@@ -9,10 +9,11 @@ from .decoration import Decorator
 
 def _attrsetter(attr):
   if attr is None:
-    return lambda obj, val: None
-
-  def fn(obj, val):
-    setattr(obj, attr, val)
+    def fn(obj, val):
+      pass
+  else:
+    def fn(obj, val):
+      setattr(obj, attr, val)
 
   # Set a default value like any other value
   fn.default = fn
@@ -21,7 +22,9 @@ def _attrsetter(attr):
 
 def _attrappender(attr):
   if attr is None:
-    return lambda obj, val: None
+    fn = lambda obj, val: None
+    fn.default = fn
+    return fn
 
   def fn(obj, val):
     try:
