@@ -416,3 +416,67 @@ class StoreSubsetTest(TestCase):
         self.assertFalse(hasattr(a, 'prev'))
         self.assertFalse(hasattr(a, 'next'))
         self.assertFalse(hasattr(a, 'index'))
+
+
+class ApplicationsTest(TestCase):
+  def real_world_applications_test(self):
+    class Doc(dr.Document):
+      tokens = dr.Store('Token')
+      entities = dr.Store('Entity')
+
+    class Token(dr.Token):
+      def __repr__(self):
+        return 'Token(norm={0!r}, span={1}:{2})'.format(self.norm, self.span.start, self.span.stop)
+
+    class Entity(dr.Annotation):
+      token_span = dr.Slice('Token')
+      type = dr.Field()
+      def __repr__(self):
+        return 'Entity(type={0!r}, token_span={1}:{2})'.format(self.type, self.token_span.start, self.token_span.stop)
+
+    #       0         1         2         3         4         5         6         7         8
+    #       0123456789012345678901234567890123456789012345678901234567890123456789012345678901
+    text = "Tony Abbott's address to party as Gillard polls as preferred prime minister again."
+
+    doc = Doc()
+    doc.tokens.create(norm="Tony", span=slice(0, 4))        # 0
+    doc.tokens.create(norm="Abbott", span=slice(5, 11))     # 1
+    doc.tokens.create(norm="'s", span=slice(11, 13))        # 2
+    doc.tokens.create(norm="address", span=slice(14, 21))   # 3
+    doc.tokens.create(norm="to", span=slice(22, 24))        # 4
+    doc.tokens.create(norm="party", span=slice(25, 30))     # 5
+    doc.tokens.create(norm="as", span=slice(31, 33))        # 6
+    doc.tokens.create(norm="Gillard", span=slice(34, 41))   # 7
+    doc.tokens.create(norm="polls", span=slice(42, 47))     # 8
+    doc.tokens.create(norm="as", span=slice(48, 50))        # 9
+    doc.tokens.create(norm="preferred", span=slice(51, 60)) # 10
+    doc.tokens.create(norm="prime", span=slice(61, 66))     # 11
+    doc.tokens.create(norm="minister", span=slice(67, 74))  # 12
+    doc.tokens.create(norm="again", span=slice(76, 81))     # 13
+    doc.tokens.create(norm=".", span=slice(81, 82))         # 14
+    doc.entities.create(type='PER', token_span=slice(0, 2)) # 0
+    doc.entities.create(type='PER', token_span=slice(7, 8)) # 1
+
+    # convert from character spans to token spans
+    dr.decorators.build_index('tokens', 'span.start', 'token_index_by_start', by_index=True)(doc)
+    dr.decorators.build_index('tokens', 'span.stop', 'token_index_by_stop', by_index=True)(doc)
+    prime_minister_span = slice(doc.token_index_by_start[61], doc.token_index_by_stop[74])
+    self.assertEqual(slice(11, 12), prime_minister_span)
+    doc.entities.create(type='PER_DESC', token_span=prime_minister_span)
+
+    # look up all mentions of a type
+    dr.decorators.build_multi_index('entities', 'type', 'entities_by_type')(doc)
+    self.assertEqual(set([doc.entities[0], doc.entities[1]]), doc.entities_by_type['PER'])
+
+    # convert from token spans to character spans
+    dr.decorators.convert_slices('entities', 'tokens', 'token_span', 'span', 'char_span')(doc)
+    self.assertEqual([slice(0, 11), slice(34, 41)], [ent.char_span for ent in doc.entities_by_type['PER']])
+
+    # traverse tokens in context around entity
+    dr.decorators.materialise_slices('entities', 'tokens', 'token_span', 'tokens')(doc)
+    dr.decorators.add_prev_next('tokens', 'prev', 'next')(doc)
+    self.assertEqual([('preferred', 'minister')], [(entity.tokens[0].prev.norm, entity.tokens[-1].next.norm) for entity in doc.entities_by_type['PER_DESC']])
+
+    # label tokens according to their presence in an entity
+    dr.decorators.reverse_slices('entities', 'tokens', 'token_span', pointer_attr='entity', offset_attr='entity_offset', mark_outside=True)(doc)
+    self.assertEqual('BIOOOOOBOOOBOOO', ''.join('O' if not tok.entity else ('I' if tok.entity_offset else 'B') for tok in doc.tokens))
