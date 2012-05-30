@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # vim: set ts=2 sw=2 et:
-from abc import ABCMeta, abstractmethod
-import sys
 
+from abc import abstractmethod
+import sys
+from schwa.dr.contrib.writers.writer import AbstractWriter
 
 class Column(object):
   """ Handles column output, wrapping a function that takes a token, returning the value. """
@@ -32,11 +33,10 @@ class Column(object):
     self.ids = {}
 
 
-class AbstractColumnWriter(object):
+class AbstractColumnWriter(AbstractWriter):
   """ One token per line with other attributes as columns. """
-  __metaclass__ = ABCMeta
-
   def __init__(self, columns, output=sys.stdout, delimiter=u'\t', encoding='utf-8', exclude=lambda t: False, between=u'\n'):
+    super(AbstractColumnWriter, self).__init__()
     assert all(isinstance(c, Column) for c in columns)
     self.output = output
     self.columns = columns
