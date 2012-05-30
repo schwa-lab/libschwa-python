@@ -38,7 +38,7 @@ class Decorator(object):
 
   @classmethod
   def _build_key(cls, *args):
-    return '{}-{}'.format(cls.__name__, '-'.join(repr(arg) for arg in args))
+    return '{0}-{1}'.format(cls.__name__, '-'.join(repr(arg) for arg in args))
 
   def __call__(self, doc):
     self.decorate(doc)
