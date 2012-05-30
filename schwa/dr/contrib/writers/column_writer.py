@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 # vim: set ts=2 sw=2 et:
-
 from abc import abstractmethod
 import sys
+
 from schwa.dr.contrib.writers.writer import AbstractWriter
+
 
 class Column(object):
   """ Handles column output, wrapping a function that takes a token, returning the value. """
