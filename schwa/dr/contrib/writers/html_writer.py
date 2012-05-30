@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 # vim: set ts=2 sw=2 sts=2 et:
-
 from collections import defaultdict
 import re
 import sys
-from schwa import dr as dr
-from writer import AbstractWriter
 from xml.etree import ElementTree
+
+from schwa import dr
+
+from .writer import AbstractWriter
 
 ENC = 'utf-8'
 REMOVE_XML = re.compile(r' *<\?xml[^>]*>\s*<div>')
+
+
 class NELinkedHTMLWriter(AbstractWriter):
   def __init__(self, f=sys.stdout, doc_attrs=['docid']):
     super(NELinkedHTMLWriter, self).__init__()
