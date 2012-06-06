@@ -30,13 +30,6 @@ class A(dr.Annotation):
     name = 'writer.A'
 
 
-class B(dr.Annotation):
-  value = dr.Field()
-
-  class Meta:
-    name = 'writer.B'
-
-
 class Y(dr.Annotation):
   p = dr.Pointer(A)
 
