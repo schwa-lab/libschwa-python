@@ -27,11 +27,7 @@ namespace schwa {
       virtual void add(Type type, const char *raw, offset_type begin, offset_type len, const char *norm=0) {
         const Py_ssize_t pybegin = begin;
         const Py_ssize_t pylen = len;
-        PyObject *tuple = 0;
-        if (norm)
-          tuple = Py_BuildValue("ns#s", pybegin, raw, pylen, norm);
-        else
-          tuple = Py_BuildValue("ns#", pybegin, raw, pylen);
+        PyObject *tuple = Py_BuildValue("ns#s", pybegin, raw, pylen, norm);
         _tokens.push_back(tuple);
       }
 
