@@ -50,6 +50,16 @@ class Decorator(object):
     return self._key
 
 
+def _flatten(seq):
+  res = []
+  for el in seq:
+    if hasattr(el, '__iter__'):
+      res.extend(_flatten(el))
+    else:
+      res.append(el)
+  return res
+
+
 def requires_decoration(*decorators, **kwargs):
   """
   Marks the document decoration dependencies for a function, where the
@@ -60,6 +70,8 @@ def requires_decoration(*decorators, **kwargs):
   doc_kwarg = kwargs.pop('doc_kwarg', 'doc')
   if kwargs:
     raise ValueError("Got unexpected keyword arguments: {}".format(kwargs.keys()))
+
+  decorators = list(_flatten(decorators))
 
   def dec(fn):
     @wraps(fn)
