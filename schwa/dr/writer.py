@@ -70,7 +70,7 @@ def swizzle_ptr(ptr):
   Swizzles a Pointer instance. The ptr argument is assumed not to be None.
   """
   if not hasattr(ptr, '_dr_index'):
-    raise ValueError('Cannot serialize a pointer to an object which is not managed by a Store')
+    raise ValueError('Cannot serialize a pointer to object {0!r} which is not managed by a Store'.format(ptr))
   return ptr._dr_index
 
 
