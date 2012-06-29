@@ -22,7 +22,7 @@ def serialised_instance_to_dict(obj, wire_type):
         assert len(val) == 2
         val = slice(val[0], val[1])
       if f.is_pointer and isinstance(val, (list, tuple)):
-        f.is_collection = True
+        f.set_collection()
       instance[f.name] = val
   return instance
 
@@ -78,6 +78,11 @@ class WireField(object):
   @property
   def is_pointer(self):
     return self.pointer_to is not None
+
+  def set_collection(self, val=True):
+    self.is_collection = val
+    if self._dr_field is not None:
+      self._dr_field.is_collection = val
 
   def dr_field(self):
     if self._dr_field is None:

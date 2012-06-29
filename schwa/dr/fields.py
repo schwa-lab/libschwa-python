@@ -67,6 +67,9 @@ class Pointer(BaseField):
   def set_dependency(self, klass):
     self._klass = klass
 
+  def __repr__(self):
+    return '{0}({1}, store={2}, is_collection={3})'.format(self.__class__.__name__, self.klass_name, self.store, self.is_collection)
+
 
 class Pointers(Pointer):
   def __init__(self, klass_name, **kwargs):
