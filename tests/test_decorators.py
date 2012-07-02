@@ -470,7 +470,7 @@ class ApplicationsTest(TestCase):
 
     # convert from token spans to character spans
     dr.decorators.convert_slices('entities', 'tokens', 'token_span', 'span', 'char_span')(doc)
-    self.assertEqual([slice(0, 11), slice(34, 41)], [ent.char_span for ent in doc.entities_by_type['PER']])
+    self.assertSetEqual(set(repr(x) for x in (slice(0, 11), slice(34, 41))), set(repr(ent.char_span) for ent in doc.entities_by_type['PER']))
 
     # traverse tokens in context around entity
     dr.decorators.materialise_slices('entities', 'tokens', 'token_span', 'tokens')(doc)
