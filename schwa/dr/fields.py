@@ -7,9 +7,9 @@ __all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'Slice', 'Ba
 class BaseAttr(object):
   __slots__ = ('serial', 'help')
 
-  def __init__(self, **kwargs):
-    self.serial = kwargs.get('serial')
-    self.help = kwargs.get('help')
+  def __init__(self, serial=None, help=None):
+    self.serial = serial
+    self.help = help
 
   def default(self):
     """
@@ -44,16 +44,16 @@ class Field(BaseField):
 class Pointer(BaseField):
   __slots__ = ('klass_name', 'store', 'is_collection', '_klass')
 
-  def __init__(self, klass_name, **kwargs):
-    super(Pointer, self).__init__(**kwargs)
+  def __init__(self, klass_name, store=None, is_collection=False, serial=None, help=None):
+    super(Pointer, self).__init__(serial=serial, help=help)
     if isinstance(klass_name, (str, unicode)):
       self.klass_name = klass_name.encode('utf-8')
       self._klass = None
     else:
       self.klass_name = klass_name._dr_name
       self._klass = klass_name
-    self.store = kwargs.get('store')
-    self.is_collection = kwargs.get('is_collection', False)
+    self.store = store
+    self.is_collection = is_collection
 
   def default(self):
     return None
@@ -72,9 +72,8 @@ class Pointer(BaseField):
 
 
 class Pointers(Pointer):
-  def __init__(self, klass_name, **kwargs):
-    kwargs['is_collection'] = True
-    super(Pointers, self).__init__(klass_name, **kwargs)
+  def __init__(self, klass_name, store=None, serial=None, help=None):
+    super(Pointers, self).__init__(klass_name, store=store, is_collection=True, serial=serial, help=help)
 
   def default(self):
     assert self._klass is not None
@@ -84,8 +83,8 @@ class Pointers(Pointer):
 class Slice(BaseField):
   __slots__ = ('klass_name', 'store', '_klass')
 
-  def __init__(self, klass_name=None, **kwargs):
-    super(Slice, self).__init__(**kwargs)
+  def __init__(self, klass_name=None, store=None, serial=None, help=None):
+    super(Slice, self).__init__(serial=serial, help=help)
     if klass_name is None:
       self.klass_name = None
       self._klass = None
@@ -95,7 +94,7 @@ class Slice(BaseField):
     else:
       self.klass_name = klass_name._dr_name
       self._klass = klass_name
-    self.store = kwargs.get('store')
+    self.store = store
 
   def default(self):
     return None
