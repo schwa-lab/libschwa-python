@@ -30,6 +30,10 @@ class Doc2(dr.Document):
     name = 'test_serial.Doc2'
 
 
+class Doc3(dr.Document):
+  exes = dr.Store(X, serial='xs')
+
+
 class SerialTest(unittest.TestCase):
   def test_doc1_doc1(self):
     d1 = Doc1(name='test.txt')
@@ -103,3 +107,18 @@ class SerialTest(unittest.TestCase):
       self.assertTrue(hasattr(x, 'foo'))
       self.assertTrue(hasattr(x, 'bar'))
       self.assertFalse(hasattr(x, 'chicken'))
+
+  def test_store_serial(self):
+    d1 = Doc1()
+    d1.xs.create(foo=1, bar='hello')
+    d1.xs.create(foo=10, bar='world')
+    d1.xs.create(foo=5)
+    d1.xs.create(bar='bar')
+
+    d3 = write_x_read_y(d1, Doc3)
+    self.assertFalse(hasattr(d3, 'xs'))
+    self.assertEqual(len(d3.exes), len(d1.xs))
+    for x, y in zip(d3.exes, d1.xs):
+      self.assertEqual(x.foo, y.foo)
+      self.assertEqual(x.bar, y.bar)
+
