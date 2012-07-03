@@ -262,6 +262,7 @@ class Reader(object):
     # instantiate all of the instances
     for s in wire_stores:
       if s.is_collection:
+        s.name = self._doc._dr_s2p[s.name]
         store = getattr(self._doc, s.name)
         store.clear()
         for obj in s.instantiate_instances():

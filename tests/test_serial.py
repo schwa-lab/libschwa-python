@@ -5,6 +5,8 @@ from schwa import dr
 
 from utils import write_read, write_x_read_y
 
+# TODO: test pointers to renamed stores
+
 
 class X(dr.Annotation):
   foo = dr.Field(serial='chicken')
@@ -32,6 +34,9 @@ class Doc2(dr.Document):
 
 class Doc3(dr.Document):
   exes = dr.Store(X, serial='xs')
+
+  class Meta:
+    name = 'test_serial.Doc3'
 
 
 class SerialTest(unittest.TestCase):
@@ -122,3 +127,6 @@ class SerialTest(unittest.TestCase):
       self.assertEqual(x.foo, y.foo)
       self.assertEqual(x.bar, y.bar)
 
+    d1 = write_x_read_y(d3, Doc1)
+
+    self.assertFalse(hasattr(d1, 'exes'))
