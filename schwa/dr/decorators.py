@@ -152,14 +152,14 @@ class reverse_slices(Decorator):
   Where objects in source_store point (through slice_attr) to slices over
   objects in target_store, this decorates the target_store objects with any or
   all of: a pointer to a target_store object, its offset within the slice
-  range, the appropriate BILOU label, a tuple of all the above.
+  range (counting from left and/or right), a tuple of all the above.
 
   If slices are not mutually exclusive, each attribute will be a list whose
   items correspond to source annotations.
   """
 
-  def __init__(self, source_store, target_store, slice_attr, pointer_attr=None, offset_attr=None, bilou_attr=None, all_attr=None, mutex=True, mark_outside=False):
-    super(reverse_slices, self).__init__(self._build_key(source_store, target_store, slice_attr, pointer_attr, offset_attr, bilou_attr, all_attr, mutex, mark_outside))
+  def __init__(self, source_store, target_store, slice_attr, pointer_attr=None, offset_attr=None, roffset_attr=None, all_attr=None, mutex=True, mark_outside=False):
+    super(reverse_slices, self).__init__(self._build_key(source_store, target_store, slice_attr, pointer_attr, offset_attr, roffset_attr, all_attr, mutex, mark_outside))
     self.get_source_store = _storegetter(source_store)
     self.get_target_store = _storegetter(target_store)
     self.slice_attr = slice_attr
@@ -169,7 +169,7 @@ class reverse_slices(Decorator):
       setter = _attrappender
     self.set_pointer = setter(pointer_attr)
     self.set_offset = setter(offset_attr)
-    self.set_bilou = setter(bilou_attr)
+    self.set_roffset = setter(roffset_attr)
     self.set_all = setter(all_attr)
     self.mark_outside = mark_outside
 
@@ -180,8 +180,8 @@ class reverse_slices(Decorator):
       for target in target_items:
         self.set_pointer.default(target, None)
         self.set_offset.default(target, None)
-        self.set_bilou.default(target, 'O')
-        self.set_all.default(target, (None, None, 'O'))
+        self.set_roffset.default(target, None)
+        self.set_all.default(target, (None, None, None))
 
     for source in self.get_source_store(doc):
       span = getattr(source, self.slice_attr)
@@ -191,16 +191,9 @@ class reverse_slices(Decorator):
       for i, target in enumerate(target_items[span]):
         self.set_pointer(target, source)
         self.set_offset(target, i)
-        if n == 1:
-          bilou = 'U'
-        elif i == n - 1:
-          bilou = 'L'
-        elif i == 0:
-          bilou = 'B'
-        else:
-          bilou = 'I'
-        self.set_bilou(target, bilou)
-        self.set_all(target, (source, i, bilou))
+        roffset = n - i - 1
+        self.set_roffset(target, roffset)
+        self.set_all(target, (source, i, roffset))
 
 
 class convert_slices(Decorator):
