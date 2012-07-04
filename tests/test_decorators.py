@@ -47,11 +47,11 @@ class SliceDecoratorsTest(TestCase):
     self.assertEqual('5', ''.join(a.field for a in self.doc.slices[1].annots))
 
   def test_reverse_mutually_exclusive_slices(self, mark_outside=False):
-    decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', pointer_attr='slice_pointer', offset_attr='slice_offset', bilou_attr='slice_bilou', all_attr='slice_all', mutex=True, mark_outside=mark_outside)
+    decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', pointer_attr='slice_pointer', offset_attr='slice_offset', roffset_attr='slice_roffset', all_attr='slice_all', mutex=True, mark_outside=mark_outside)
     for a in self.doc.annots:
       self.assertFalse(hasattr(a, 'slice_pointer'))
       self.assertFalse(hasattr(a, 'slice_offset'))
-      self.assertFalse(hasattr(a, 'slice_bilou'))
+      self.assertFalse(hasattr(a, 'slice_roffset'))
       self.assertFalse(hasattr(a, 'slice_all'))
 
     decorate(self.doc)
@@ -59,24 +59,24 @@ class SliceDecoratorsTest(TestCase):
     slices = self.doc.slices
 
     EXPECTED = {
-      1: (slices[0], 0, 'B'),
-      2: (slices[0], 1, 'I'),
-      3: (slices[0], 2, 'L'),
-      5: (slices[1], 0, 'U'),
+      1: (slices[0], 0, 2),
+      2: (slices[0], 1, 1),
+      3: (slices[0], 2, 0),
+      5: (slices[1], 0, 0),
     }
-    EXPECTED_OUTSIDE = (None, None, 'O')
+    EXPECTED_OUTSIDE = (None, None, None)
 
     for i, a in enumerate(annots):
       if i in EXPECTED:
-        self.assertEqual((a.slice_pointer, a.slice_offset, a.slice_bilou), EXPECTED[i])
+        self.assertEqual((a.slice_pointer, a.slice_offset, a.slice_roffset), EXPECTED[i])
         self.assertEqual(a.slice_all, EXPECTED[i])
       elif mark_outside:
-        self.assertEqual((a.slice_pointer, a.slice_offset, a.slice_bilou), EXPECTED_OUTSIDE)
+        self.assertEqual((a.slice_pointer, a.slice_offset, a.slice_roffset), EXPECTED_OUTSIDE)
         self.assertEqual(a.slice_all, EXPECTED_OUTSIDE)
       else:
         self.assertFalse(hasattr(a, 'slice_pointer'))
         self.assertFalse(hasattr(a, 'slice_offset'))
-        self.assertFalse(hasattr(a, 'slice_bilou'))
+        self.assertFalse(hasattr(a, 'slice_roffset'))
         self.assertFalse(hasattr(a, 'slice_all'))
 
   def test_reverse_mutually_exclusive_slices_with_o(self):
@@ -90,40 +90,40 @@ class SliceDecoratorsTest(TestCase):
 
   def test_reverse_overlapping_slices(self, mark_outside=False):
     self.doc.slices.create(span=slice(0, 4), name='Overlapping')
-    decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', 'slice_pointer', 'slice_offset', 'slice_bilou', 'slice_all', mutex=False, mark_outside=mark_outside)
+    decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', 'slice_pointer', 'slice_offset', 'slice_roffset', 'slice_all', mutex=False, mark_outside=mark_outside)
 
     for a in self.doc.annots:
       self.assertFalse(hasattr(a, 'slice_pointer'))
       self.assertFalse(hasattr(a, 'slice_offset'))
-      self.assertFalse(hasattr(a, 'slice_bilou'))
+      self.assertFalse(hasattr(a, 'slice_roffset'))
       self.assertFalse(hasattr(a, 'slice_all'))
 
     decorate(self.doc)
     annots = self.doc.annots
     slices = self.doc.slices
     EXPECTED = {
-      0: [(slices[2], 0, 'B')],
-      1: [(slices[2], 1, 'I'), (slices[0], 0, 'B')],
-      2: [(slices[2], 2, 'I'), (slices[0], 1, 'I')],
-      3: [(slices[2], 3, 'L'), (slices[0], 2, 'L')],
-      5: [(slices[1], 0, 'U')],
+      0: [(slices[2], 0, 3)],
+      1: [(slices[2], 1, 2), (slices[0], 0, 2)],
+      2: [(slices[2], 2, 1), (slices[0], 1, 1)],
+      3: [(slices[2], 3, 0), (slices[0], 2, 0)],
+      5: [(slices[1], 0, 0)],
     }
 
     for i, a in enumerate(annots):
       if i in EXPECTED:
         self.assertEqual(set(a.slice_pointer), set(p for p, o, b in EXPECTED[i]))
         self.assertEqual(set(a.slice_offset), set(o for p, o, b in EXPECTED[i]))
-        self.assertEqual(set(a.slice_bilou), set(b for p, o, b in EXPECTED[i]))
+        self.assertEqual(set(a.slice_roffset), set(b for p, o, b in EXPECTED[i]))
         self.assertEqual(set(a.slice_all), set(EXPECTED[i]))
       elif mark_outside:
         self.assertEqual(len(a.slice_pointer), 0)
         self.assertEqual(len(a.slice_offset), 0)
-        self.assertEqual(len(a.slice_bilou), 0)
+        self.assertEqual(len(a.slice_roffset), 0)
         self.assertEqual(len(a.slice_all), 0)
       else:
         self.assertFalse(hasattr(a, 'slice_pointer'))
         self.assertFalse(hasattr(a, 'slice_offset'))
-        self.assertFalse(hasattr(a, 'slice_bilou'))
+        self.assertFalse(hasattr(a, 'slice_roffset'))
         self.assertFalse(hasattr(a, 'slice_all'))
 
   def test_reverse_overlapping_slices_with_o(self):
