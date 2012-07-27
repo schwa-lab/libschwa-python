@@ -12,9 +12,13 @@ def write_x_read_y(doc, class2=None):
   f = StringIO()
   dr.Writer(f).write_doc(doc)
   f.seek(0)
-  print 'Reading {0}'.format(class2.__name__)
+  if class2 is None:
+    print 'Reading meta.Document'
+  else:
+    print 'Reading {0}'.format(class2.__name__)
   return dr.Reader(class2).stream(f).next()
 
 
 def write_read(doc):
   return write_x_read_y(doc, doc.__class__)
+
