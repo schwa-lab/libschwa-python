@@ -128,4 +128,3 @@ class SerialTest(unittest.TestCase):
 
     d1 = write_x_read_y(d3, Doc1)
     self.assertFalse(hasattr(d1, 'exes'))
-
