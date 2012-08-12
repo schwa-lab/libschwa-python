@@ -227,7 +227,7 @@ class find_contained_slices(Decorator):
 
   def decorate(self, doc, CONTAINING_GROUP=0, CONTAINED_GROUP=1):
     containing_tuples = self._gen_tuples(self.get_containing_store(doc), self.get_containing_slice, CONTAINING_GROUP)
-    contained_tuples = self._gen_tuples(self.get_containing_store(doc), self.get_containing_slice, CONTAINED_GROUP)
+    contained_tuples = self._gen_tuples(self.get_contained_store(doc), self.get_contained_slice, CONTAINED_GROUP)
     open_containers = []
     for tup in sorted(itertools.chain(containing_tuples, contained_tuples)):
       start, stop, group, obj = tup
