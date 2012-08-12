@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from collections import defaultdict
 from functools import partial
 from operator import attrgetter
+import itertools
 from types import StringTypes, TupleType
 
 from .decoration import Decorator
@@ -194,6 +195,53 @@ class reverse_slices(Decorator):
         roffset = n - i - 1
         self.set_roffset(target, roffset)
         self.set_all(target, (source, i, roffset))
+
+
+class find_contained_slices(Decorator):
+  """
+  Adds collection_attr to each containing_store object O, being a list of the
+  objects in contained_store with a contained_slice that is a sub-span of O's
+  containing_slice value. 
+  
+  If contained_store (or contained_slice) is None, the value is copied from
+  containing_store (containing_slice). In this case, each O will not be
+  included in its contained objects collection.
+  """
+  def __init__(self, containing_store, containing_slice, contained_store=None, contained_slice=None, collection_attr=None):
+    if not collection_attr:
+      raise ValueError('collection_attr must be a non-empty string')
+    super(find_contained_slices, self).__init__(self._build_key(containing_store, containing_slice, contained_store, contained_slice, collection_attr))
+    self.get_containing_store = _storegetter(containing_store)
+    self.get_containing_slice = attrgetter(containing_slice)
+    self.get_contained_store = _storegetter(contained_store or containing_store)
+    self.get_contained_slice = attrgetter(contained_slice or containing_slice)
+    self.set_collection = _attrsetter(collection_attr)
+    self.get_collection = attrgetter(collection_attr)
+
+  def _gen_tuples(self, store, get_slice, group):
+    for obj in store:
+      sl = get_slice(obj)
+      if not sl:
+        continue
+      yield sl.start, -sl.stop, group, obj
+
+  def decorate(self, doc, CONTAINING_GROUP=0, CONTAINED_GROUP=1):
+    containing_tuples = self._gen_tuples(self.get_containing_store(doc), self.get_containing_slice, CONTAINING_GROUP)
+    contained_tuples = self._gen_tuples(self.get_containing_store(doc), self.get_containing_slice, CONTAINED_GROUP)
+    open_containers = []
+    for tup in sorted(itertools.chain(containing_tuples, contained_tuples)):
+      start, stop, group, obj = tup
+      while open_containers and start >= open_containers[-1][1]:
+        open_containers.pop()
+
+      if group == CONTAINING_GROUP:
+        collection = []
+        self.set_collection(obj, collection)
+        open_containers.append((start, -stop, obj, collection))
+      else:
+        for cstart, cstop, container, collection in open_containers:
+          if container != obj:
+            collection.append(obj)
 
 
 class convert_slices(Decorator):

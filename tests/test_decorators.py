@@ -154,6 +154,30 @@ class SliceDecoratorsTest(TestCase):
       self.assertEqual(ss.myannot_span, EXPECTED[i])
     self.assertEqual(i, 3)
 
+  def test_find_contained_slices(self):
+    self.doc.slices.create(span=slice(1, 3), name='1-3')
+    self.doc.slices.create(span=slice(2, 3), name='2-3a')
+    self.doc.slices.create(span=slice(2, 3), name='2-3b')
+    self.doc.slices.create(span=slice(3, 4), name='3-4')
+    decorate = dr.decorators.find_contained_slices('slices', 'span', collection_attr='contained')
+    
+    for sl in self.doc.slices:
+      self.assertFalse(hasattr(sl, 'contained'))
+    
+    decorate(self.doc)
+
+    EXPECTED = {
+        'Unit slice': [],
+        'Long slice': ['1-3', '2-3a', '2-3b', '3-4'],
+        '1-3': ['2-3a', '2-3b'],
+        '2-3a': ['2-3b'],
+        '2-3b': ['2-3a'],
+        '3-4': [],
+    }
+
+    for sl in self.doc.slices:
+      self.assertListEqual(EXPECTED[sl.name], [subsl.name for subsl in sl.contained])
+
 
 class PointerDecoratorTest(TestCase):
   def setUp(self):
