@@ -22,15 +22,14 @@ class DocrepMeta(type):
       s2p.update(getattr(base, '_dr_s2p', {}))
     for name, attr in attrs.iteritems():
       if isinstance(attr, BaseAttr):
+        if attr.serial is None:
+          attr.serial = name
+        s2p[attr.serial] = name
+
         if isinstance(attr, BaseStore):
-          if attr.serial is None:
-            attr.serial = name
           stores[name] = attr
         elif isinstance(attr, BaseField):
-          if attr.serial is None:
-            attr.serial = name
           fields[name] = attr
-          s2p[attr.serial] = name
 
     # adds the Field and Store information appropriately
     klass._dr_fields = fields  # { pyname : Field }
@@ -41,7 +40,7 @@ class DocrepMeta(type):
     if hasattr(meta, 'name'):
       klass._dr_name = meta.name
     else:
-      klass._dr_name = klass_name.split('.')[-1]
+      klass._dr_name = klass.__module__ + '.' + klass_name
 
     # add the dependency requirements fulfilled flag
     klass._dr_fulfilled = False
@@ -96,6 +95,8 @@ class AnnotationMeta(DocrepMeta):
       for field in getattr(klass, field_set).itervalues():
         if not field.is_fulfilled():
           dep = field.get_dependency()
+          if '.' not in dep:
+            dep = klass.__module__ + '.' + dep
           if dep in AnnotationMeta.reg:
             _, k = AnnotationMeta.reg[dep]
             field.set_dependency(k)
