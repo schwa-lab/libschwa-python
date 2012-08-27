@@ -176,7 +176,10 @@ class Reader(object):
     return self
 
   def _unpack(self):
-    obj = self._unpacker.unpack()
+    try:
+        obj = self._unpacker.unpack()
+    except StopIteration:
+        return None
     return obj
 
   def _update_pointers(self, objs, pointer_fields):
