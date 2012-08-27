@@ -22,15 +22,14 @@ class DocrepMeta(type):
       s2p.update(getattr(base, '_dr_s2p', {}))
     for name, attr in attrs.iteritems():
       if isinstance(attr, BaseAttr):
+        if attr.serial is None:
+          attr.serial = name
+        s2p[attr.serial] = name
+
         if isinstance(attr, BaseStore):
-          if attr.serial is None:
-            attr.serial = name
           stores[name] = attr
         elif isinstance(attr, BaseField):
-          if attr.serial is None:
-            attr.serial = name
           fields[name] = attr
-          s2p[attr.serial] = name
 
     # adds the Field and Store information appropriately
     klass._dr_fields = fields  # { pyname : Field }
@@ -41,7 +40,7 @@ class DocrepMeta(type):
     if hasattr(meta, 'name'):
       klass._dr_name = meta.name
     else:
-      klass._dr_name = klass_name.split('.')[-1]
+      klass._dr_name = klass_name
 
     # add the dependency requirements fulfilled flag
     klass._dr_fulfilled = False
@@ -66,10 +65,17 @@ class DocrepMeta(type):
 
     return klass
 
+  @staticmethod
+  def qualified_name(klass_name, module):
+    if '.' in klass_name:
+      return klass_name
+    return '{0}.{1}'.format(module, klass_name)
+
 
 class AnnotationMeta(DocrepMeta):
   reg     = {}  # { name : (sorted(attrs), klass) }
   unbound = {}  # { name : [ (Field, klass) ] }
+  _reader_count = 0
 
   def __new__(mklass, klass_name, bases, attrs):
     klass = super(AnnotationMeta, mklass).__new__(mklass, klass_name, bases, attrs)
@@ -79,7 +85,7 @@ class AnnotationMeta(DocrepMeta):
   @staticmethod
   def register(klass):
     fields = tuple(sorted(klass._dr_fields.keys() + klass._dr_stores.keys()))
-    name = klass._dr_name
+    name = AnnotationMeta.qualified_name(klass._dr_name, klass.__module__)
 
     # check if we have cached this class
     if name in AnnotationMeta.reg:
@@ -95,7 +101,7 @@ class AnnotationMeta(DocrepMeta):
     for field_set in ('_dr_fields', '_dr_stores'):
       for field in getattr(klass, field_set).itervalues():
         if not field.is_fulfilled():
-          dep = field.get_dependency()
+          dep = AnnotationMeta.qualified_name(field.get_dependency(), klass.__module__)
           if dep in AnnotationMeta.reg:
             _, k = AnnotationMeta.reg[dep]
             field.set_dependency(k)
@@ -115,13 +121,19 @@ class AnnotationMeta(DocrepMeta):
     return klass
 
   @staticmethod
-  def cached(klass_name):
-    x = AnnotationMeta.reg.get(klass_name)
+  def cached(klass_name, module):
+    x = AnnotationMeta.reg.get(AnnotationMeta.qualified_name(klass_name, module))
     return x and x[1]
 
   @staticmethod
   def clear_cache():
     AnnotationMeta.reg.clear()
+
+  @classmethod
+  def generate_module(cls):
+    """Returns a unique meta module name"""
+    cls._reader_count += 1
+    return 'schwa.dr.meta.__{0}'.format(cls._reader_count)
 
 
 class Base(object):

@@ -106,16 +106,17 @@ class WireField(object):
 
 
 class WireType(object):
-  __slots__ = ('number', 'name', 'fields', 'pointer_fields', 'is_meta', '_klass')
+  __slots__ = ('number', 'name', 'fields', 'pointer_fields', 'is_meta', 'module', '_klass')
 
   by_number = {}
 
-  def __init__(self, number, name, klass_fields):
+  def __init__(self, number, name, klass_fields, module=None):
     self.number = number
     self.name = name
     self.fields = [WireField(i, f) for i, f in enumerate(klass_fields)]
     self.pointer_fields = [f for f in self.fields if f.is_pointer and not f.is_range]
     self.is_meta = name == '__meta__'
+    self.module = module
     self._klass = None
     WireType.by_number[number] = self
 
@@ -132,15 +133,16 @@ class WireType(object):
     if self.is_meta:
       if doc_klass is None:
         klass_name = 'Document'
-        klass = AnnotationMeta.cached(klass_name)
+        klass = AnnotationMeta.cached(klass_name, self.module)
       else:
         klass = doc_klass
     else:
       klass_name = self.name
-      klass = AnnotationMeta.cached(klass_name)
+      klass = AnnotationMeta.cached(klass_name, self.module)
 
     dr_fields = dict((f.name, f.dr_field()) for f in self.fields)
     if klass is None:
+      dr_fields['__module__'] = self.module
       if self.is_meta:
         klass = type(klass_name, (Document, ), dr_fields)
       else:
@@ -155,10 +157,11 @@ class WireType(object):
 
 
 class Reader(object):
-  __slots__ = ('_doc_klass', '_unpacker', '_doc')
+  __slots__ = ('_doc_klass', '_meta_module', '_unpacker', '_doc')
 
   def __init__(self, doc_klass=None):
     self._doc_klass = doc_klass
+    self._meta_module = AnnotationMeta.generate_module()
     if doc_klass and not issubclass(doc_klass, Document):
       raise ValueError('"doc_klass" must be a subclass of Document')
 
@@ -205,7 +208,7 @@ class Reader(object):
     # decode the klasses header
     wire_types, wire_meta = [], None
     for i, (klass_name, klass_fields) in enumerate(header):
-      t = WireType(i, klass_name, klass_fields)
+      t = WireType(i, klass_name, klass_fields, self._meta_module)
       wire_types.append(t)
       if t.is_meta:
         wire_meta = t
