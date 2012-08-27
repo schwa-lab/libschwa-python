@@ -40,7 +40,7 @@ class DocrepMeta(type):
     if hasattr(meta, 'name'):
       klass._dr_name = meta.name
     else:
-      klass._dr_name = mklass.qualified_name(klass_name, klass.__module__)
+      klass._dr_name = klass_name
 
     # add the dependency requirements fulfilled flag
     klass._dr_fulfilled = False
@@ -85,7 +85,7 @@ class AnnotationMeta(DocrepMeta):
   @staticmethod
   def register(klass):
     fields = tuple(sorted(klass._dr_fields.keys() + klass._dr_stores.keys()))
-    name = klass._dr_name
+    name = AnnotationMeta.qualified_name(klass._dr_name, klass.__module__)
 
     # check if we have cached this class
     if name in AnnotationMeta.reg:

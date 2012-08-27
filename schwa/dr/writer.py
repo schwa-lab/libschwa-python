@@ -167,6 +167,8 @@ class Writer(object):
       self._pack(len(tmp.getvalue()))
       self._ostream.write(tmp.getvalue())
 
+    self._ostream.flush()
+
   def _pack(self, obj, out=None):
     if out is None:
       out = self._ostream
