@@ -168,8 +168,6 @@ class Reader(object):
       # Register aliases for known types
       AnnotationMeta.register(doc_klass, self._meta_module)
       for name, store in doc_klass._dr_stores.iteritems():
-        import sys
-        print >> sys.stderr, name, store.klass_name, store._klass
         if store._klass:
           AnnotationMeta.register(store._klass, self._meta_module)
 
