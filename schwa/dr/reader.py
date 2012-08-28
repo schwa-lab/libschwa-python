@@ -161,9 +161,17 @@ class Reader(object):
 
   def __init__(self, doc_klass=None):
     self._doc_klass = doc_klass
-    self._meta_module = AnnotationMeta.generate_module()
     if doc_klass and not issubclass(doc_klass, Document):
       raise ValueError('"doc_klass" must be a subclass of Document')
+    self._meta_module = AnnotationMeta.generate_module()
+    if doc_klass:
+      # Register aliases for known types
+      AnnotationMeta.register(doc_klass, self._meta_module)
+      for name, store in doc_klass._dr_stores.iteritems():
+        import sys
+        print >> sys.stderr, name, store.klass_name, store._klass
+        if store._klass:
+          AnnotationMeta.register(store._klass, self._meta_module)
 
   def __iter__(self):
     return self

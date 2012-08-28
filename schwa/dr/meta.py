@@ -83,9 +83,10 @@ class AnnotationMeta(DocrepMeta):
     return klass
 
   @staticmethod
-  def register(klass):
+  def register(klass, module=None):
+    module = module or klass.__module__
     fields = tuple(sorted(klass._dr_fields.keys() + klass._dr_stores.keys()))
-    name = AnnotationMeta.qualified_name(klass._dr_name, klass.__module__)
+    name = AnnotationMeta.qualified_name(klass._dr_name, module)
 
     # check if we have cached this class
     if name in AnnotationMeta.reg:
@@ -101,7 +102,7 @@ class AnnotationMeta(DocrepMeta):
     for field_set in ('_dr_fields', '_dr_stores'):
       for field in getattr(klass, field_set).itervalues():
         if not field.is_fulfilled():
-          dep = AnnotationMeta.qualified_name(field.get_dependency(), klass.__module__)
+          dep = AnnotationMeta.qualified_name(field.get_dependency(), module)
           if dep in AnnotationMeta.reg:
             _, k = AnnotationMeta.reg[dep]
             field.set_dependency(k)
