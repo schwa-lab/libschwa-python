@@ -42,9 +42,7 @@ if zmq:
   arg_parser.add_argument('--nthreads', default=1, type=int, help='In --serve or --worker mode, how many worker threads to provide (default: %(default)s)')
 
 def run_processor(process, args, doc_class=None, dealer_url='inproc://workers'):
-  if not (args.serve_url or args.wroker_url):
-    process(stream_coroutine(sys.stdin, sys.stdout, doc_class))
-  else:
+  if all(hasattr(args, a) for a in ('serve_url', 'worker_url')) and all(getattr(args, a) for a in ('serve_url', 'worker_url')):
     context = zmq.Context(1)
     if args.serve_url:
       clients = context.socket(zmq.ROUTER)
@@ -61,4 +59,5 @@ def run_processor(process, args, doc_class=None, dealer_url='inproc://workers'):
 
     if args.serve_url:
       zmq.device(zmq.QUEUE, clients, workers)
-
+  else:
+    process(stream_coroutine(sys.stdin, sys.stdout, doc_class))
