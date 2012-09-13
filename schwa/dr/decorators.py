@@ -282,7 +282,7 @@ class convert_slices(Decorator):
 
 class reverse_pointers(Decorator):
   """
-  Where objects in source_store point (through slice_attr) to objects in
+  Where objects in source_store point (through pointer_attr) to objects in
   target_store, this decorates the target objects with a rev_attr attribute
   pointing back to the source object.
   """
