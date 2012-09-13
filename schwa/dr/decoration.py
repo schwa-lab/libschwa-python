@@ -12,14 +12,16 @@ def decorator(key=None):
   """
   def dec(fn):
     @wraps(fn)
-    def wrapper(doc):
+    def wrapper(doc, check=True, mark=True):
       try:
-        if key in doc._decorated_by:
+        if check and key in doc._decorated_by:
             return
       except AttributeError:
         doc._decorated_by = set()
-      doc._decorated_by.add(key)
+      if mark:
+        doc._decorated_by.add(key)
       fn(doc)
+    wrapper.reapply = partial(wrapper, check=False)
     return wrapper
   if callable(key):
     return dec(key)
@@ -42,6 +44,9 @@ class Decorator(object):
 
   def __call__(self, doc):
     self.decorate(doc)
+
+  def reapply(self, doc):
+    return self.decorate.reapply(doc)
 
   def decorate(self, doc):
     raise NotImplementedError()
