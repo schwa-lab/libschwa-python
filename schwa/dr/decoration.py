@@ -19,9 +19,9 @@ def decorator(key=None):
         if check and key in doc._decorated_by:
             return
       except AttributeError:
-        doc._decorated_by = set()
+        doc._decorated_by = {}
       if mark:
-        doc._decorated_by.add(key)
+        doc._decorated_by[key] = wrapper
       fn(doc)
     wrapper.reapply = partial(wrapper, check=False)
     return wrapper
