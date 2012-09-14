@@ -68,6 +68,7 @@ class add_prev_next(Decorator):
     self.set_prev = _attrsetter(prev_attr)
     self.set_next = _attrsetter(next_attr)
     self.set_index = _attrsetter(index_attr)
+    self._set_affected_fields((store, prev_attr), (store, next_attr), (store, index_attr))
 
   def decorate(self, doc):
     prev = None
@@ -100,6 +101,7 @@ class build_index(Decorator):
     self.construct_index = construct
     self.get_add_entry = _attrgetter(add_entry)
     self.by_index = by_index
+    self._set_affected_fields(index_attr)
 
   def decorate(self, doc):
     res = self.construct_index()
@@ -139,6 +141,7 @@ class materialise_slices(Decorator):
     self.get_target_store = _storegetter(target_store)
     self.slice_attr = slice_attr
     self.deref_attr = deref_attr
+    self._set_affected_fields((source_store, deref_attr))
 
   def decorate(self, doc):
     store = self.get_target_store(doc)
@@ -173,6 +176,7 @@ class reverse_slices(Decorator):
     self.set_roffset = setter(roffset_attr)
     self.set_all = setter(all_attr)
     self.mark_outside = mark_outside
+    self._set_affected_fields((target_store, pointer_attr), (target_store, offset_attr), (target_store, roffset_attr), (target_store, all_attr))
 
   def decorate(self, doc):
     target_items = self.get_target_store(doc)
@@ -217,6 +221,7 @@ class find_contained_slices(Decorator):
     self.get_contained_slice = attrgetter(contained_slice or containing_slice)
     self.set_collection = _attrsetter(collection_attr)
     self.get_collection = attrgetter(collection_attr)
+    self._set_affected_fields((containing_store, collection_attr))
 
   def _gen_tuples(self, store, get_slice, group):
     for obj in store:
@@ -260,6 +265,7 @@ class convert_slices(Decorator):
     self.get_source_slice = attrgetter(source_slice_attr)
     self.get_target_slice = attrgetter(target_slice_attr)
     self.set_new_slice = _attrsetter(new_slice_attr)
+    self._set_affected_fields((source_store, new_slice_attr))
 
   def decorate(self, doc):
     targets = self.get_target_store(doc)
@@ -298,6 +304,7 @@ class reverse_pointers(Decorator):
       setter = _attrappender
     self.set_rev = setter(rev_attr)
     self.mark_outside = mark_outside
+    self._set_affected_fields((target_store, rev_attr))
 
   def decorate(self, doc):
     if self.mark_outside:

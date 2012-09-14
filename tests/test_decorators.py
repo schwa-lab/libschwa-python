@@ -38,22 +38,29 @@ class SliceDecoratorsTest(TestCase):
 
   def test_materialise_slices(self):
     decorate = dr.decorators.materialise_slices('slices', 'annots', 'span', 'annots')
-    for sl in self.doc.slices:
-      self.assertFalse(hasattr(sl, 'annots'))
+    def assert_clean():
+      for sl in self.doc.slices:
+        self.assertFalse(hasattr(sl, 'annots'))
 
+    assert_clean()
     decorate(self.doc)
 
     self.assertEqual('123', ''.join(a.field for a in self.doc.slices[0].annots))
     self.assertEqual('5', ''.join(a.field for a in self.doc.slices[1].annots))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_reverse_mutually_exclusive_slices(self, mark_outside=False):
     decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', pointer_attr='slice_pointer', offset_attr='slice_offset', roffset_attr='slice_roffset', all_attr='slice_all', mutex=True, mark_outside=mark_outside)
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'slice_pointer'))
-      self.assertFalse(hasattr(a, 'slice_offset'))
-      self.assertFalse(hasattr(a, 'slice_roffset'))
-      self.assertFalse(hasattr(a, 'slice_all'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'slice_pointer'))
+        self.assertFalse(hasattr(a, 'slice_offset'))
+        self.assertFalse(hasattr(a, 'slice_roffset'))
+        self.assertFalse(hasattr(a, 'slice_all'))
 
+    assert_clean()
     decorate(self.doc)
     annots = self.doc.annots
     slices = self.doc.slices
@@ -79,6 +86,9 @@ class SliceDecoratorsTest(TestCase):
         self.assertFalse(hasattr(a, 'slice_roffset'))
         self.assertFalse(hasattr(a, 'slice_all'))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_reverse_mutually_exclusive_slices_with_o(self):
     self.test_reverse_mutually_exclusive_slices(mark_outside=True)
 
@@ -92,12 +102,14 @@ class SliceDecoratorsTest(TestCase):
     self.doc.slices.create(span=slice(0, 4), name='Overlapping')
     decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', 'slice_pointer', 'slice_offset', 'slice_roffset', 'slice_all', mutex=False, mark_outside=mark_outside)
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'slice_pointer'))
-      self.assertFalse(hasattr(a, 'slice_offset'))
-      self.assertFalse(hasattr(a, 'slice_roffset'))
-      self.assertFalse(hasattr(a, 'slice_all'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'slice_pointer'))
+        self.assertFalse(hasattr(a, 'slice_offset'))
+        self.assertFalse(hasattr(a, 'slice_roffset'))
+        self.assertFalse(hasattr(a, 'slice_all'))
 
+    assert_clean()
     decorate(self.doc)
     annots = self.doc.annots
     slices = self.doc.slices
@@ -126,6 +138,9 @@ class SliceDecoratorsTest(TestCase):
         self.assertFalse(hasattr(a, 'slice_roffset'))
         self.assertFalse(hasattr(a, 'slice_all'))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_reverse_overlapping_slices_with_o(self):
     self.test_reverse_overlapping_slices(mark_outside=True)
 
@@ -137,9 +152,11 @@ class SliceDecoratorsTest(TestCase):
 
     decorate = dr.decorators.convert_slices('super_slices', 'slices', 'slice_span', 'span', 'myannot_span')
 
-    for ss in self.doc.super_slices:
-      self.assertFalse(hasattr(ss, 'myannot_span'))
+    def assert_clean():
+      for ss in self.doc.super_slices:
+        self.assertFalse(hasattr(ss, 'myannot_span'))
     
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = [
@@ -154,6 +171,9 @@ class SliceDecoratorsTest(TestCase):
       self.assertEqual(ss.myannot_span, EXPECTED[i])
     self.assertEqual(i, 3)
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_find_contained_slices(self):
     self.doc.slices.create(span=slice(1, 3), name='1-3')
     self.doc.slices.create(span=slice(2, 3), name='2-3a')
@@ -161,9 +181,11 @@ class SliceDecoratorsTest(TestCase):
     self.doc.slices.create(span=slice(3, 4), name='3-4')
     decorate = dr.decorators.find_contained_slices('slices', 'span', collection_attr='contained')
     
-    for sl in self.doc.slices:
-      self.assertFalse(hasattr(sl, 'contained'))
+    def assert_clean():
+      for sl in self.doc.slices:
+        self.assertFalse(hasattr(sl, 'contained'))
     
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -176,7 +198,10 @@ class SliceDecoratorsTest(TestCase):
     }
 
     for sl in self.doc.slices:
-      self.assertListEqual(EXPECTED[sl.name], [subsl.name for subsl in sl.contained])
+      self.assertListEqual(sorted(EXPECTED[sl.name]), sorted([subsl.name for subsl in sl.contained]))
+
+    decorate.undo(self.doc)
+    assert_clean()
 
 
 class PointerDecoratorTest(TestCase):
@@ -190,9 +215,11 @@ class PointerDecoratorTest(TestCase):
     """One child, one parent"""
     decorate = dr.decorators.reverse_pointers('annots', 'annots', 'child', 'parent', mutex=True, mark_outside=mark_outside)
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'parent'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'parent'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -206,6 +233,9 @@ class PointerDecoratorTest(TestCase):
       else:
         self.assertFalse(hasattr(a, 'parent'))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_reverse_mutually_exclusive_pointer_with_o(self):
     self.test_reverse_mutually_exclusive_pointer(True)
 
@@ -213,9 +243,11 @@ class PointerDecoratorTest(TestCase):
     """Multiple children, one parent"""
     decorate = dr.decorators.reverse_pointers('annots', 'annots', 'children', 'parent', mutex=True, mark_outside=mark_outside)
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'parent'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'parent'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -230,6 +262,9 @@ class PointerDecoratorTest(TestCase):
       else:
         self.assertFalse(hasattr(a, 'parent'))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_reverse_mutually_exclusive_pointers_with_o(self):
     self.test_reverse_mutually_exclusive_pointers(True)
 
@@ -238,9 +273,11 @@ class PointerDecoratorTest(TestCase):
     self.doc.annots[0].child = self.doc.annots[0]
     decorate = dr.decorators.reverse_pointers('annots', 'annots', 'child', 'parents', mutex=False, mark_outside=mark_outside)
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'parents'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'parents'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -254,6 +291,9 @@ class PointerDecoratorTest(TestCase):
       else:
         self.assertFalse(hasattr(a, 'parents'))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_reverse_overlapping_pointer_with_o(self):
     self.test_reverse_overlapping_pointer(True)
 
@@ -262,9 +302,11 @@ class PointerDecoratorTest(TestCase):
     self.doc.annots[0].children = [self.doc.annots[0]]
     decorate = dr.decorators.reverse_pointers('annots', 'annots', 'children', 'parents', mutex=False, mark_outside=mark_outside)
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'parents'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'parents'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -278,6 +320,9 @@ class PointerDecoratorTest(TestCase):
         self.assertEqual(len(a.parents), 0)
       else:
         self.assertFalse(hasattr(a, 'parents'))
+
+    decorate.undo(self.doc)
+    assert_clean()
 
   def test_reverse_overlapping_pointers_with_o(self):
     self.test_reverse_overlapping_pointers(True)
@@ -293,10 +338,12 @@ class PrevNextIndexTest(TestCase):
   def test_prev_next(self):
     decorate = dr.decorators.add_prev_next('annots', 'prev', 'next')
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'prev'))
-      self.assertFalse(hasattr(a, 'next'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'prev'))
+        self.assertFalse(hasattr(a, 'next'))
 
+    assert_clean()
     decorate(self.doc)
 
     annots = self.doc.annots
@@ -311,26 +358,40 @@ class PrevNextIndexTest(TestCase):
     for a in self.doc.annots:
       self.assertFalse(hasattr(a, 'index'))
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_prev_next_single_item(self):
     decorate = dr.decorators.add_prev_next('slices', 'prev', 'next')
 
-    for s in self.doc.slices:
-      self.assertFalse(hasattr(s, 'prev'))
-      self.assertFalse(hasattr(s, 'next'))
+    def assert_clean():
+      for s in self.doc.slices:
+        self.assertFalse(hasattr(s, 'prev'))
+        self.assertFalse(hasattr(s, 'next'))
 
+    assert_clean()
     decorate(self.doc)
 
     self.assertIsNone(self.doc.slices[0].prev)
     self.assertIsNone(self.doc.slices[0].next)
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_index(self):
     decorate = dr.decorators.add_prev_next('annots', index_attr='index')
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'index'))
 
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'index'))
+
+    assert_clean()
     decorate(self.doc)
     for i, a in enumerate(self.doc.annots):
       self.assertEqual(i, a.index)
+
+    decorate.undo(self.doc)
+    assert_clean()
 
 
 class BuildIndexTest(TestCase):
@@ -344,8 +405,10 @@ class BuildIndexTest(TestCase):
   def test_single_key(self):
     decorate = dr.decorators.build_index('slices', 'span.start', 'test_index')
 
-    self.assertFalse(hasattr(self.doc, 'test_index'))
+    def assert_clean():
+      self.assertFalse(hasattr(self.doc, 'test_index'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -354,11 +417,16 @@ class BuildIndexTest(TestCase):
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_multi_key(self):
     decorate = dr.decorators.build_index('annots', 'field', 'test_index')
 
-    self.assertFalse(hasattr(self.doc, 'test_index'))
+    def assert_clean():
+      self.assertFalse(hasattr(self.doc, 'test_index'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -368,11 +436,16 @@ class BuildIndexTest(TestCase):
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_by_index(self):
     decorate = dr.decorators.build_index('annots', 'field', 'test_index', by_index=True)
 
-    self.assertFalse(hasattr(self.doc, 'test_index'))
+    def assert_clean():
+      self.assertFalse(hasattr(self.doc, 'test_index'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -382,24 +455,34 @@ class BuildIndexTest(TestCase):
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
 
+    decorate.undo(self.doc)
+    assert_clean()
+
   def test_multi_value(self):
     decorate = dr.decorators.build_multi_index('slices', 'span.stop', 'test_index')
 
-    self.assertFalse(hasattr(self.doc, 'test_index'))
+    def assert_clean():
+      self.assertFalse(hasattr(self.doc, 'test_index'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
         2: set((self.doc.slices[0], self.doc.slices[1]))
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
+    
+    decorate.undo(self.doc)
+    assert_clean()
 
   def test_missing_key(self):
     self.doc.slices.create(span=None)
     decorate = dr.decorators.build_index('slices', 'span.start', 'test_index')
 
-    self.assertFalse(hasattr(self.doc, 'test_index'))
+    def assert_clean():
+      self.assertFalse(hasattr(self.doc, 'test_index'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -407,6 +490,9 @@ class BuildIndexTest(TestCase):
         1: self.doc.slices[1],
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
+
+    decorate.undo(self.doc)
+    assert_clean()
 
 
 class StoreSubsetTest(TestCase):
@@ -421,11 +507,13 @@ class StoreSubsetTest(TestCase):
   def add_prev_next_favourites_test(self):
     decorate = dr.decorators.add_prev_next(lambda doc: doc.favourites, 'prev', 'next', 'index')
 
-    for a in self.doc.annots:
-      self.assertFalse(hasattr(a, 'prev'))
-      self.assertFalse(hasattr(a, 'next'))
-      self.assertFalse(hasattr(a, 'index'))
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'prev'))
+        self.assertFalse(hasattr(a, 'next'))
+        self.assertFalse(hasattr(a, 'index'))
 
+    assert_clean()
     decorate(self.doc)
 
     EXPECTED = {
@@ -440,6 +528,8 @@ class StoreSubsetTest(TestCase):
         self.assertFalse(hasattr(a, 'prev'))
         self.assertFalse(hasattr(a, 'next'))
         self.assertFalse(hasattr(a, 'index'))
+
+    self.assertRaises(NotImplementedError, decorate.undo, self.doc)
 
 
 class ApplicationsTest(TestCase):

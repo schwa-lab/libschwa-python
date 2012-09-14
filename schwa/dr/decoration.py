@@ -2,6 +2,8 @@
 Utilities for managing document decoration by marking the document with the set of decorations that have been applied to it.
 """
 
+from __future__ import absolute_import
+from collections import defaultdict
 from functools import wraps, partial
 
 
@@ -42,11 +44,66 @@ class Decorator(object):
   def _build_key(cls, *args):
     return '{0}-{1}'.format(cls.__name__, '-'.join(repr(arg) for arg in args))
 
+  def _set_affected_fields(self, *args):
+    """
+    Stores a list of fields affected (i.e. set) for this decorator, aiding in reflexion and undo operations.
+    
+    Elements of args should be (store, field) pairs, or just an attr string for attributes of the document set by the decorator.
+    
+    Where store, field or attr are not strings or None for any of the args, affected fields will not be stored.
+    """
+    field_map = defaultdict(set)
+    for field in args:
+      if isinstance(field, str):
+        field_map[None].add(field)
+      elif field is None:
+        pass
+      else:
+        try:
+          store, field = field
+        except TypeError:
+          return
+        if isinstance(store, str) and isinstance(field, str):
+          field_map[store].add(field)
+        elif store is not None and field is not None:
+          # not strings or None
+          return
+    self._affected_fields = dict(field_map)
+
   def __call__(self, doc):
     self.decorate(doc)
 
   def reapply(self, doc):
+    """Apply the decorator without checking if it has been previously applied to this document."""
     return self.decorate.reapply(doc)
+
+  @staticmethod
+  def _clear_fields(obj, fields):
+    for field in fields:
+      try:
+        delattr(obj, field)
+      except AttributeError:
+        pass
+
+  def undo(self, doc, unmark=True):
+    """Where possible, unset the fields set by this decorator (and any other values in those fields), and allow it to be decorated again."""
+    try:
+      field_map = self._affected_fields
+    except AttributeError:
+      raise NotImplementedError('The affected fields are unknown for decorator %r' % self)
+
+    for store, fields in field_map.iteritems():
+      if store is None:
+        self._clear_fields(doc, fields)
+      else:
+        for obj in getattr(doc, store, ()):
+          self._clear_fields(obj, fields)
+
+    if unmark:
+      try:
+        doc._decorated_by.remove(self._key)
+      except KeyError:
+        pass
 
   def decorate(self, doc):
     raise NotImplementedError()
