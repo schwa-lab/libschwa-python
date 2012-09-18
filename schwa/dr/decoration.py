@@ -15,11 +15,10 @@ def decorator(key=None):
   def dec(fn):
     @wraps(fn)
     def wrapper(doc, check=True, mark=True):
-      try:
-        if check and key in doc._decorated_by:
-            return
-      except AttributeError:
+      if not hasattr(doc, '_decorated_by'):
         doc._decorated_by = set()
+      if check and key in doc._decorated_by:
+        return
       if mark:
         doc._decorated_by.add(key)
       fn(doc)
