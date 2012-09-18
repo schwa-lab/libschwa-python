@@ -91,7 +91,7 @@ class AnnotationMeta(DocrepMeta):
     # check if we have cached this class
     if name in AnnotationMeta.reg:
       f, k = AnnotationMeta.reg[name]
-      if fields != f:
+      if set(f) - set(fields):
         raise ValueError('Cannot register two Annotation types {0!r} with the same name but with different fields ({1} != {2})'.format(name, f, fields))
       return k
 
