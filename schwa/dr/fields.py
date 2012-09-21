@@ -76,8 +76,7 @@ class Pointers(Pointer):
     super(Pointers, self).__init__(klass_name, store=store, is_collection=True, serial=serial, help=help)
 
   def default(self):
-    assert self._klass is not None
-    return StoreList(self._klass)
+    return []
 
 
 class Slice(BaseField):
