@@ -70,9 +70,3 @@ class Issue1423Test(unittest.TestCase):
     d = write_x_read_y(d, DocWithFieldSerialFoo)
     self.assertFalse(hasattr(d, 'foo'))
     self.assertEqual(d.bar, 'hello')
-
-  def test_fieldfoo_constfoo(self):
-    d = DocWithFieldSerialFoo()
-    d.bar = 'hello'
-    with self.assertRaisesRegexp(AttributeError, Issue1423Test.OVERWRITE_MSG):
-      write_x_read_y(d, DocWithConstAttrFoo)

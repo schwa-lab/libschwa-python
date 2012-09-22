@@ -7,6 +7,7 @@ from utils import write_read, write_x_read_y
 
 # TODO: test pointers to renamed stores
 
+
 class X(dr.Annotation):
   foo = dr.Field(serial='chicken')
   bar = dr.Field()

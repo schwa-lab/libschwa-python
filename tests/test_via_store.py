@@ -3,7 +3,7 @@ import unittest
 
 from schwa import dr
 
-from utils import write_read, write_x_read_y
+from utils import write_read
 
 
 class X(dr.Annotation):
@@ -35,7 +35,6 @@ class Doc(dr.Document):
   ys = dr.Store(Y)
   zs = dr.Store(Z)
   foo_xs = dr.Store(X)
-
 
 
 class ViaStoreTest(unittest.TestCase):

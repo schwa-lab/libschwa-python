@@ -10,6 +10,7 @@ import unittest
 from schwa import dr
 from utils import write_x_read_y
 
+
 class Doc(dr.Document):
 
   foos = dr.Store('Foo')
@@ -48,4 +49,3 @@ class Issue1538Test(unittest.TestCase):
     self.doc.favourite = self.doc.wrong_foos[2]
     with self.assertRaisesRegexp(TypeError, self.WRONG_STORE_MSG):
       write_x_read_y(self.doc)
-

@@ -21,4 +21,3 @@ def write_x_read_y(doc, class2=None):
 
 def write_read(doc):
   return write_x_read_y(doc, doc.__class__)
-
