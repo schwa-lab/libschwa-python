@@ -9,23 +9,23 @@ from schwa import dr
 from utils import write_read, write_x_read_y
 
 
-class Annot(dr.Annotation):
+class Annot(dr.Ann):
   pass
 
 
-class DocWithoutFields(dr.Document):
+class DocWithoutFields(dr.Doc):
   class Meta:
     name = 'test_sanity.DocWithoutFields'
 
 
-class DocWithField(dr.Document):
+class DocWithField(dr.Doc):
   field = dr.Field()
 
   class Meta:
     name = 'test_sanity.DocWithField'
 
 
-class DocWithAnnotsAndPointer(dr.Document):
+class DocWithAnnotsAndPointer(dr.Doc):
   annots = dr.Store(Annot)
   special_annot = dr.Pointer(Annot)
 

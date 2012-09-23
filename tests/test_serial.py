@@ -8,7 +8,7 @@ from utils import write_read, write_x_read_y
 # TODO: test pointers to renamed stores
 
 
-class X(dr.Annotation):
+class X(dr.Ann):
   foo = dr.Field(serial='chicken')
   bar = dr.Field()
 
@@ -16,7 +16,7 @@ class X(dr.Annotation):
     name = 'test_serial.X'
 
 
-class Doc1(dr.Document):
+class Doc1(dr.Doc):
   name = dr.Field(serial='filename')
   xs = dr.Store(X)
 
@@ -24,7 +24,7 @@ class Doc1(dr.Document):
     name = 'test_serial.Doc1'
 
 
-class Doc2(dr.Document):
+class Doc2(dr.Doc):
   filename = dr.Field()
   xs = dr.Store(X)
 
@@ -32,7 +32,7 @@ class Doc2(dr.Document):
     name = 'test_serial.Doc2'
 
 
-class Doc3(dr.Document):
+class Doc3(dr.Doc):
   exes = dr.Store(X, serial='xs')
 
   class Meta:

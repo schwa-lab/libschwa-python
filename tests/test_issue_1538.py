@@ -11,7 +11,7 @@ from schwa import dr
 from utils import write_x_read_y
 
 
-class Doc(dr.Document):
+class Doc(dr.Doc):
 
   foos = dr.Store('Foo')
   wrong_foos = dr.Store('Foo')
@@ -22,11 +22,11 @@ class Doc(dr.Document):
     name = 'issue_1538.Doc'
 
 
-class Foo(dr.Annotation):
+class Foo(dr.Ann):
   val = dr.Field()
 
 
-class Bar(dr.Annotation):
+class Bar(dr.Ann):
   val = dr.Field()
 
 

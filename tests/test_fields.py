@@ -6,7 +6,7 @@ from schwa import dr
 from utils import write_x_read_y, write_read
 
 
-class DocWithoutFields(dr.Document):
+class DocWithoutFields(dr.Doc):
   class Meta:
     name = 'test_fields.DocWithoutFields'
 
@@ -18,7 +18,7 @@ class FieldWithDefault(dr.Field):
     return FieldWithDefault.DEFAULT_VALUE
 
 
-class DocWithDefaultField(dr.Document):
+class DocWithDefaultField(dr.Doc):
   field = FieldWithDefault()
 
   class Meta:

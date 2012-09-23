@@ -13,21 +13,21 @@ from schwa import dr
 from utils import write_x_read_y
 
 
-class DocWithFieldFoo(dr.Document):
+class DocWithFieldFoo(dr.Doc):
   foo = dr.Field()
 
   class Meta:
     name = 'issue_1423.DocWithFieldFoo'
 
 
-class DocWithFieldSerialFoo(dr.Document):
+class DocWithFieldSerialFoo(dr.Doc):
   bar = dr.Field(serial='foo')
 
   class Meta:
     name = 'issue_1423.DocWithFieldSerialFoo'
 
 
-class DocWithConstAttrFoo(dr.Document):
+class DocWithConstAttrFoo(dr.Doc):
   foo = 5
 
   class Meta:

@@ -3,14 +3,14 @@ from unittest import TestCase
 from schwa import dr
 
 
-class Document(dr.Document):
+class Document(dr.Doc):
   annots = dr.Store('MyAnnot')
   slices = dr.Store('SliceAnnot')
   super_slices = dr.Store('SuperSliceAnnot')
   favourites = dr.Pointers('MyAnnot')
 
 
-class MyAnnot(dr.Annotation):
+class MyAnnot(dr.Ann):
   field = dr.Field()
   children = dr.Pointers('MyAnnot')
   child = dr.Pointer('MyAnnot')
@@ -19,7 +19,7 @@ class MyAnnot(dr.Annotation):
     return '{}(field={}, children={}, child={})'.format(self.__class__.__name__, self.field, self.children, self.child)
 
 
-class SliceAnnot(dr.Annotation):
+class SliceAnnot(dr.Ann):
   span = dr.Slice('MyAnnot')
   name = dr.Field()
 
@@ -27,7 +27,7 @@ class SliceAnnot(dr.Annotation):
     return '{}(span={}, name={})'.format(self.__class__.__name__, self.span, self.name)
 
 
-class SuperSliceAnnot(dr.Annotation):
+class SuperSliceAnnot(dr.Ann):
   slice_span = dr.Slice('SliceAnnot')
 
 
@@ -539,7 +539,7 @@ class StoreSubsetTest(TestCase):
 
 class ApplicationsTest(TestCase):
   def real_world_applications_test(self):
-    class Doc(dr.Document):
+    class Doc(dr.Doc):
       tokens = dr.Store('Token')
       entities = dr.Store('Entity')
 
@@ -547,7 +547,7 @@ class ApplicationsTest(TestCase):
       def __repr__(self):
         return 'Token(norm={0!r}, span={1}:{2})'.format(self.norm, self.span.start, self.span.stop)
 
-    class Entity(dr.Annotation):
+    class Entity(dr.Ann):
       token_span = dr.Slice('Token')
       type = dr.Field()
 

@@ -9,35 +9,35 @@ import unittest
 from schwa import dr
 
 
-class DocWithField(dr.Document):
+class DocWithField(dr.Doc):
   name = dr.Field()
 
   class Meta:
     name = 'writer.DocWithField'
 
 
-class DocWithFieldWithSerial(dr.Document):
+class DocWithFieldWithSerial(dr.Doc):
   name = dr.Field(serial='filename')
 
   class Meta:
     name = 'writer.DocWithFieldWithSerial'
 
 
-class A(dr.Annotation):
+class A(dr.Ann):
   value = dr.Field()
 
   class Meta:
     name = 'writer.A'
 
 
-class Y(dr.Annotation):
+class Y(dr.Ann):
   p = dr.Pointer(A)
 
   class Meta:
     name = 'writer.Y'
 
 
-class Z(dr.Annotation):
+class Z(dr.Ann):
   p = dr.Pointer(A, serial='zp')
   value = dr.Field()
 
@@ -45,14 +45,14 @@ class Z(dr.Annotation):
     name = 'writer.Z'
 
 
-class DocWithA(dr.Document):
+class DocWithA(dr.Doc):
   as_ = dr.Store(A, serial='as')
 
   class Meta:
     name = 'writer.DocWithA'
 
 
-class DocWithAYZ(dr.Document):
+class DocWithAYZ(dr.Doc):
   as_ = dr.Store(A, serial='as')
   ys = dr.Store(Y)
   zs = dr.Store(Z)

@@ -8,7 +8,7 @@ from schwa import dr
 from utils import write_read
 
 
-class Event(dr.Annotation):
+class Event(dr.Ann):
   name = dr.Field()
   date = dr.DateTimeField()
 
@@ -16,7 +16,7 @@ class Event(dr.Annotation):
     name = 'test_field_types.Event'
 
 
-class String(dr.Annotation):
+class String(dr.Ann):
   utf8  = dr.EncodedStringField()
   utf32 = dr.EncodedStringField('utf-32')
 
@@ -24,7 +24,7 @@ class String(dr.Annotation):
     name = 'test_field_types.String'
 
 
-class Doc(dr.Document):
+class Doc(dr.Doc):
   events  = dr.Store(Event)
   strings = dr.Store(String)
 

@@ -10,7 +10,7 @@ from schwa import dr
 from utils import write_read
 
 
-class Node(dr.Annotation):
+class Node(dr.Ann):
   label = dr.Field()
   parent = dr.Pointer('test_self_pointer.Node')
 
@@ -18,7 +18,7 @@ class Node(dr.Annotation):
     name = 'test_self_pointer.Node'
 
 
-class Doc(dr.Document):
+class Doc(dr.Doc):
   nodes = dr.Store(Node)
 
   class Meta:

@@ -6,28 +6,28 @@ from schwa import dr
 from utils import write_read
 
 
-class X(dr.Annotation):
+class X(dr.Ann):
   class Meta:
     name = 'via_store.X'
 
   value = dr.Field()
 
 
-class Y(dr.Annotation):
+class Y(dr.Ann):
   class Meta:
     name = 'via_store.Y'
 
   p = dr.Pointer(X, store='xs')
 
 
-class Z(dr.Annotation):
+class Z(dr.Ann):
   class Meta:
     name = 'via_store.Z'
 
   p = dr.Pointer(X, store='foo_xs')
 
 
-class Doc(dr.Document):
+class Doc(dr.Doc):
   class Meta:
     name = 'via_store.Doc'
 

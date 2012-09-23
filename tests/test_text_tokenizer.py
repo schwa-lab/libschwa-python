@@ -33,17 +33,17 @@ OUTPUT = [
 ]
 
 
-class Document(dr.Document):
+class Document(dr.Doc):
   tokens = dr.Store('Token')
   sentences = dr.Store('Sentence')
   paragraphs = dr.Store('Paragraph')
 
 
-class Sentence(dr.Annotation):
+class Sentence(dr.Ann):
   span = dr.Slice('Token')
 
 
-class Paragraph(dr.Annotation):
+class Paragraph(dr.Ann):
   span = dr.Slice('Sentence')
 
 
