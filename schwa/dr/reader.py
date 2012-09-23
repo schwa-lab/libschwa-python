@@ -1,13 +1,19 @@
 # vim: set ts=2 et:
 import msgpack
 
-from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE
-from .fields import Field, Pointer, Pointers, Singleton, Slice, Store
-from .meta import Annotation, AnnotationMeta, Document
+from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
+from .fields import Field, Pointer, Pointers, SelfPointer, SelfPointers, Singleton, Slice, Store
+from .runtime import RTField, RTStore, RTAnn, RTManager
+from .meta import Ann, Doc
 
 __all__ = ['Reader']
 
 
+class Reader(object):
+  pass
+
+# =============================================================================
+# =============================================================================
 def serialised_instance_to_dict(obj, wire_type):
   """
   Converts a serialised instance obj to a dictionary which can be

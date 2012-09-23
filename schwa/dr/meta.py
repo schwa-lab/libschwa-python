@@ -1,51 +1,45 @@
 # vim: set ts=2 et:
 import StringIO
 
-from .exceptions import DependencyException
-from .fields import BaseAttr, BaseField, BaseStore, Field, Slice
+from .fields import BaseField, BaseStore
 
-__all__ = ['AnnotationMeta', 'Annotation', 'Document', 'Token']
+__all__ = ['Ann', 'Doc']
 
 
 class DocrepMeta(type):
   def __new__(mklass, klass_name, bases, attrs):
-    meta = attrs.get('Meta', None)
-
     # construct the class
     klass = super(DocrepMeta, mklass).__new__(mklass, klass_name, bases, attrs)
 
     # discover the BaseField and BaseStore instances
-    stores, fields, s2p = {}, {}, {}
+    stores, fields = {}, {}
     for base in bases:
       stores.update(getattr(base, '_dr_stores', {}))
       fields.update(getattr(base, '_dr_fields', {}))
-      s2p.update(getattr(base, '_dr_s2p', {}))
     for name, attr in attrs.iteritems():
-      if isinstance(attr, BaseAttr):
-        if attr.serial is None:
-          attr.serial = name
-        s2p[attr.serial] = name
-
-        if isinstance(attr, BaseStore):
-          stores[name] = attr
-        elif isinstance(attr, BaseField):
-          fields[name] = attr
+      if isinstance(attr, BaseStore):
+        stores[name] = attr
+      elif isinstance(attr, BaseField):
+        fields[name] = attr
 
     # adds the Field and Store information appropriately
-    klass._dr_fields = fields  # { pyname : Field }
-    klass._dr_stores = stores  # { pyname : Store }
-    klass._dr_s2p = s2p        # { serial : pyname }
+    klass._dr_fields = fields  # { attr : Field }
+    klass._dr_stores = stores  # { attr : Store }
 
     # add the name
-    if hasattr(meta, 'name'):
-      klass._dr_name = meta.name
+    meta = attrs.get('Meta', None)
+    if hasattr(meta, 'serial'):
+      klass._dr_serial = meta.serial
     else:
-      klass._dr_name = klass_name
-
-    # add the dependency requirements fulfilled flag
-    klass._dr_fulfilled = False
+      klass._dr_serial = klass_name
 
     # construct the docstring for the class
+    DocrepMeta.add_docstring(klass)
+
+    return klass
+
+  @staticmethod
+  def add_docstring(klass):
     doc = StringIO.StringIO()
     write_doc = False
     if klass.__doc__:
@@ -63,91 +57,15 @@ class DocrepMeta(type):
     if write_doc:
       klass.__doc__ = doc.getvalue()
 
-    return klass
-
-  @staticmethod
-  def qualified_name(klass_name, module):
-    if '.' in klass_name:
-      return klass_name
-    return '{0}.{1}'.format(module, klass_name)
-
-
-class AnnotationMeta(DocrepMeta):
-  reg     = {}  # { name : (sorted(attrs), klass) }
-  unbound = {}  # { name : [ (Field, klass) ] }
-  _reader_count = 0
-
-  def __new__(mklass, klass_name, bases, attrs):
-    klass = super(AnnotationMeta, mklass).__new__(mklass, klass_name, bases, attrs)
-    klass = AnnotationMeta.register(klass)
-    return klass
-
-  @staticmethod
-  def register(klass, module=None):
-    module = module or klass.__module__
-    fields = tuple(sorted(klass._dr_fields.keys() + klass._dr_stores.keys()))
-    name = AnnotationMeta.qualified_name(klass._dr_name, module)
-
-    # check if we have cached this class
-    if name in AnnotationMeta.reg:
-      f, k = AnnotationMeta.reg[name]
-      if set(f) - set(fields):
-        raise ValueError('Cannot register two Annotation types {0!r} with the same name but with different fields ({1} != {2})'.format(name, f, fields))
-      return k
-
-    # register the class
-    AnnotationMeta.reg[name] = (fields, klass)
-
-    # update the dependency fulfilled information for the class
-    for field_set in ('_dr_fields', '_dr_stores'):
-      for field in getattr(klass, field_set).itervalues():
-        if not field.is_fulfilled():
-          dep = AnnotationMeta.qualified_name(field.get_dependency(), module)
-          if dep in AnnotationMeta.reg:
-            _, k = AnnotationMeta.reg[dep]
-            field.set_dependency(k)
-          else:
-            if dep not in AnnotationMeta.unbound:
-              AnnotationMeta.unbound[dep] = []
-            AnnotationMeta.unbound[dep].append((field, klass))
-    klass.update_fulfilled()
-
-    # update fields which depend on this newly created class
-    if name in AnnotationMeta.unbound:
-      for f, k in AnnotationMeta.unbound[name]:
-        f.set_dependency(klass)
-        k.update_fulfilled()
-      del AnnotationMeta.unbound[name]
-
-    return klass
-
-  @staticmethod
-  def cached(klass_name, module):
-    x = AnnotationMeta.reg.get(AnnotationMeta.qualified_name(klass_name, module))
-    return x and x[1]
-
-  @staticmethod
-  def clear_cache():
-    AnnotationMeta.reg.clear()
-
-  @classmethod
-  def generate_module(cls):
-    """Returns a unique meta module name"""
-    cls._reader_count += 1
-    return 'schwa.dr.meta.__{0}'.format(cls._reader_count)
-
 
 class Base(object):
-  __metaclass__ = AnnotationMeta
+  __metaclass__ = DocrepMeta
 
   def __init__(self, **kwargs):
-    if not self._dr_fulfilled:
-      raise DependencyException('Cannot instantiate class {0!r} with unfilled dependencies {1!r}'.format(self._dr_name, list(self.find_unfulfilled())))
-
     for name, field in self._dr_fields.iteritems():
-      self.__dict__[name] = field.default()
+      setattr(self, name, field.default())
     for name, store in self._dr_stores.iteritems():
-      self.__dict__[name] = store.default()
+      setattr(self, name, store.default())
 
     for k, v in kwargs.iteritems():
       setattr(self, k, v)
@@ -160,76 +78,21 @@ class Base(object):
         kwargs[k] = f.from_wire(v)
     return klass(**kwargs)
 
-  @classmethod
-  def find_unfulfilled(klass):
-    """
-    Returns an unfulfilled field where available, otherwise None
-    """
-    FIELD_MSG_TEMPLATE = 'Field {0!r} which refers to class name {1!r}'
-    for name, field in klass._dr_fields.iteritems():
-      if not field.is_fulfilled():
-        if hasattr(field, 'klass_name'):
-          yield FIELD_MSG_TEMPLATE.format(name, field.klass_name)
-        else:
-          yield name
-    for name, store in klass._dr_stores.iteritems():
-      if not store.is_fulfilled():
-        if hasattr(store, 'klass_name'):
-          yield FIELD_MSG_TEMPLATE.format(name, store.klass_name)
-        else:
-          yield name
 
-  @classmethod
-  def update_fulfilled(klass):
-    klass._dr_fulfilled = not any(klass.find_unfulfilled())
-
-  @classmethod
-  def update_attrs(klass, attrs):
-    def _check(attr):
-      if hasattr(klass, attr):
-        kval = getattr(klass, attr)
-        if not isinstance(kval, BaseAttr) or (isinstance(kval, BaseStore) and isinstance(val, BaseField)) or (isinstance(kval, BaseField) and isinstance(val, BaseStore)):
-          raise AttributeError('Cannot overwrite attr {0!r} of class {1!r} of different type ({2!r})'.format(attr, klass, kval))
-
-    for attr, val in attrs.iteritems():
-      _check(attr)
-      if attr in klass._dr_s2p:
-        attr = klass._dr_s2p[attr]
-        _check(attr)
-      else:
-        if isinstance(val, BaseStore):
-          klass._dr_stores[attr] = val
-        else:
-          klass._dr_fields[attr] = val
-        klass._dr_s2p[attr] = attr
+class Ann(Base):
+  pass
 
 
-class Annotation(Base):
-  class Meta:
-    name = 'schwa.dr.Annotation'
+class Doc(Base):
+  def __init__(self, **kwargs):
+    super(Doc, self).__init__(**kwargs)
+    self._dr_rt = None
 
-
-class Document(Base):
-  class Meta:
-    name = 'schwa.dr.Document'
+  def __setattr__(self, attr, value):
+    if attr in self._dr_stores:
+      raise ValueError('Cannot overwrite a store ({0})'.format(attr))
+    super(Doc, self).__setattr__(attr, value)
 
   def ready(self):
-    """
-    Hook called after a Document and all its Stores are loaded.
-    """
+    """Hook called after a Document and all its Stores are loaded."""
     pass
-
-
-class Token(Annotation):
-  span = Slice()
-  raw  = Field()
-  norm = Field()
-
-  class Meta:
-    name = 'schwa.dr.Token'
-
-  def __repr__(self):
-    return 'Token({0!r})'.format(self.norm)
-
-  def __str__(self):
-    return self.norm

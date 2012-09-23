@@ -1,19 +1,23 @@
+# vim: set ts=2 et:
+import argparse
+import StringIO
 import sys
 import threading
-import argparse
 try:
   import zmq
 except ImportError:
   zmq = None
-from StringIO import StringIO
+
 from .reader import Reader
 from .writer import Writer
+
 
 def stream_coroutine(istream, ostream, doc_class=None):
   writer = Writer(ostream)
   for doc in Reader(doc_class).stream(istream):
     res = yield(doc)
     writer.write_doc(res or doc)
+
 
 def zmq_coroutine(context, dealer_url, doc_class=None):
   istream = StringIO()
@@ -34,12 +38,14 @@ def zmq_coroutine(context, dealer_url, doc_class=None):
     istream.truncate(0)
     ostream.truncate(0)
 
+
 arg_parser = argparse.ArgumentParser(add_help=False)
 if zmq:
   _megroup = arg_parser.add_mutually_exclusive_group()
   _megroup.add_argument('--serve', dest='serve_url', metavar="ADDRESS", default=None, help='Serve from the specified address, e.g. tcp://*:7300')
   _megroup.add_argument('--worker', dest='worker_url', metavar="ADDRESS", default=None, help='Acquire work from the specified address')
   arg_parser.add_argument('--nthreads', default=1, type=int, help='In --serve or --worker mode, how many worker threads to provide (default: %(default)s)')
+
 
 def run_processor(process, args, doc_class=None, dealer_url='inproc://workers'):
   if all(hasattr(args, a) for a in ('serve_url', 'worker_url')) and all(getattr(args, a) for a in ('serve_url', 'worker_url')):

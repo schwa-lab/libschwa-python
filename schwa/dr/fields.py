@@ -1,7 +1,7 @@
 # vim: set ts=2 et:
 from .collections import StoreList
 
-__all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'Slice', 'BaseStore', 'Store', 'Singleton']
+__all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'SelfPointer', 'SelfPointers', 'Slice', 'Store']
 
 
 class BaseAttr(object):
@@ -12,18 +12,7 @@ class BaseAttr(object):
     self.help = help
 
   def default(self):
-    """
-    Returns the default value for this type when it is instantiated.
-    """
-    raise NotImplementedError
-
-  def is_fulfilled(self):
-    raise NotImplementedError
-
-  def get_dependency(self):
-    raise NotImplementedError
-
-  def set_dependency(self, klass):
+    """Returns the default value for this type when it is instantiated."""
     raise NotImplementedError
 
 
@@ -37,122 +26,97 @@ class Field(BaseField):
   def default(self):
     return None
 
-  def is_fulfilled(self):
-    return True
-
 
 class Pointer(BaseField):
-  __slots__ = ('klass_name', 'store', 'is_collection', '_klass')
+  __slots__ = ('_klass', '_klass_name', 'is_collection', 'is_self_pointer', 'store')
 
-  def __init__(self, klass_name, store=None, is_collection=False, serial=None, help=None):
+  def __init__(self, klass, store=None, serial=None, help=None):
     super(Pointer, self).__init__(serial=serial, help=help)
-    if isinstance(klass_name, (str, unicode)):
-      self.klass_name = klass_name.encode('utf-8')
+    if isinstance(klass, (str, unicode)):
+      self._klass_name = klass.encode('utf-8')
       self._klass = None
+    elif issubclass(klass, Ann):
+      self._klass_name = None
+      self._klass = klass
     else:
-      self.klass_name = klass_name._dr_name
-      self._klass = klass_name
+      raise ValueError('Unknown first argument {0!r}.'.format(klass))
     self.store = store
-    self.is_collection = is_collection
+    self.is_collection = False
+    self.is_self_pointer = False
 
   def default(self):
     return None
 
-  def is_fulfilled(self):
-    return self._klass is not None
-
-  def get_dependency(self):
-    return self.klass_name
-
-  def set_dependency(self, klass):
-    self._klass = klass
-
   def __repr__(self):
-    return '{0}({1}, store={2}, is_collection={3})'.format(self.__class__.__name__, self.klass_name, self.store, self.is_collection)
+    return '{0}({1}, store={2}, is_collection={3}, is_self_pointer={4})'.format(self.__class__.__name__, self._klass or self._klass_name, self.store, self.is_collection, self.is_self_pointer)
 
 
 class Pointers(Pointer):
-  def __init__(self, klass_name, store=None, serial=None, help=None):
-    super(Pointers, self).__init__(klass_name, store=store, is_collection=True, serial=serial, help=help)
+  def __init__(self, klass, store=None, serial=None, help=None):
+    super(Pointers, self).__init__(klass, store=store, serial=serial, help=help)
+    self.is_collection = True
+
+  def default(self):
+    return []
+
+
+class SelfPointer(Pointer):
+  def __init__(self, klass, serial=None, help=None):
+    super(SelfPointer, self).__init__(klass, serial=serial, help=help)
+    self.is_self_pointer = True
+
+
+class SelfPointers(Pointer):
+  def __init__(self, klass, serial=None, help=None):
+    super(SelfPointers, self).__init__(klass, serial=serial, help=help)
+    self.is_collection = True
 
   def default(self):
     return []
 
 
 class Slice(BaseField):
-  __slots__ = ('klass_name', 'store', '_klass')
+  __slots__ = ('_klass', '_klass_name', 'store')
 
-  def __init__(self, klass_name=None, store=None, serial=None, help=None):
+  def __init__(self, klass=None, store=None, serial=None, help=None):
     super(Slice, self).__init__(serial=serial, help=help)
-    if klass_name is None:
-      self.klass_name = None
+    if klass is None:
+      self._klass_name = None
       self._klass = None
-    elif isinstance(klass_name, (str, unicode)):
-      self.klass_name = klass_name.encode('utf-8')
+    elif isinstance(klass, (str, unicode)):
+      self._klass_name = klass.encode('utf-8')
       self._klass = None
+    elif issubclass(klass, Ann):
+      self._klass_name = None
+      self._klass = klass
     else:
-      self.klass_name = klass_name._dr_name
-      self._klass = klass_name
+      raise ValueError('Unknown first argument {0!r}.'.format(klass))
     self.store = store
 
   def default(self):
     return None
 
-  def is_pointer(self):
-    return self.klass_name is not None
-
-  def is_fulfilled(self):
-    if self.is_pointer():
-      return self._klass is not None
-    return True
-
-  def get_dependency(self):
-    return self.klass_name
-
-  def set_dependency(self, klass):
-    self._klass = klass
-
 
 # =============================================================================
 # =============================================================================
-class BaseStore(BaseAttr):
-  def is_collection(self):
-    return True
-
-
-class Store(BaseStore):
+class Store(BaseAttr):
   """
   A Store houses Annotation instances. For an Annotation to be serialised, it needs
   to be placed into a Store.
   """
-  __slots__ = ('klass_name', '_klass')
+  __slots__ = ('_klass', '_klass_name')
 
-  def __init__(self, klass_name, **kwargs):
-    super(Store, self).__init__(**kwargs)
-    if isinstance(klass_name, (str, unicode)):
-      self.klass_name = klass_name.encode('utf-8')
+  def __init__(self, klass, serial=None, help=None):
+    super(Store, self).__init__(serial=serial, help=help)
+    if isinstance(klass, (str, unicode)):
+      self._klass_name = klass.encode('utf-8')
       self._klass = None
+    elif issubclass(klass, Ann):
+      self._klass_name = None
+      self._klass = klass
     else:
-      self.klass_name = klass_name._dr_name
-      self._klass = klass_name
+      raise ValueError('Unknown first argument {0!r}.'.format(klass))
 
   def default(self):
     assert self._klass is not None
     return StoreList(self._klass)
-
-  def is_fulfilled(self):
-    return self._klass is not None
-
-  def get_dependency(self):
-    return self.klass_name
-
-  def set_dependency(self, klass):
-    self._klass = klass
-
-
-class Singleton(Store):
-  def default(self):
-    return None
-
-  def is_collection(self):
-    return False
