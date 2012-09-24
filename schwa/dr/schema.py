@@ -53,6 +53,9 @@ class AnnSchema(BaseSchema):
       raise TypeError('argument must be a FieldSchema instance')
     self._fields[name] = field
 
+  def fields(self):
+    return self._fields.itervalues()
+
 
 class DocSchema(BaseSchema):
   __slots__ = ('_fields', '_stores', '_stores_by_klass', 'klasses')
@@ -101,8 +104,19 @@ class DocSchema(BaseSchema):
     else:
       self._stores_by_klass[store.stored_type.defn] = [store]
 
+  def has_klass_by_serial(self, serial):
+    for klass in self.klasses:
+      if klass.serial == serial:
+        return True
+    return False
+
   def has_store_by_name(self, name):
     return name in self._stores
+
+  def klass_by_serial(self, serial):
+    for klass in self.klasses:
+      if klass.serial == serial:
+        return klass
 
   def store_count_by_type(self, klass):
     klasses = self._stores_by_klass.get(klass, [])
@@ -113,6 +127,12 @@ class DocSchema(BaseSchema):
 
   def store_by_type(self, klass):
     return self._stores_by_klass[klass][0]
+
+  def fields(self):
+    return self._fields.itervalues()
+
+  def stores(self):
+    return self._stores.itervalues()
 
 
 class FieldSchema(BaseSchema):

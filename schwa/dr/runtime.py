@@ -6,7 +6,7 @@ class RTField(object):
   __slots__ = ('defn', 'points_to', 'serial', 'field_id', 'is_slice', 'is_self_pointer')
 
   def __init__(self, field_id, serial, points_to, is_slice, is_self_pointer, defn=None):
-    self.defn = defn  # FieldDef
+    self.defn = defn  # FieldSchema
     self.points_to = points_to  # RTStore
     self.serial = serial
     self.field_id = field_id
@@ -16,32 +16,34 @@ class RTField(object):
   def is_lazy(self):
     return self.defn is None
 
+  @property
   def is_pointer(self):
     return self.points_to is not None
 
 
 class RTStore(object):
-  __slots__ = ('defn', 'klass', 'serial', 'store_id')
+  __slots__ = ('klass', 'serial', 'store_id', 'defn', 'lazy')
 
-  def __init__(self, store_id, serial, klass, defn=None):
-    self.defn = defn  # StoreDef
+  def __init__(self, store_id, serial, klass, defn=None, lazy=None):
     self.klass = klass  # RTAnn
     self.serial = serial
     self.store_id = store_id
+    self.defn = defn  # StoreSchema
+    self.lazy = lazy
 
   def is_lazy(self):
     return self.defn is None
 
 
 class RTAnn(object):
-  __slots__ = ('defn', 'serial', 'klass_id', 'fields', 'stores')
+  __slots__ = ('serial', 'klass_id', 'fields', 'stores', 'defn')
 
   def __init__(self, klass_id, serial, defn=None):
-    self.defn = defn  # Schema
     self.serial = serial
     self.klass_id = klass_id
     self.fields = []
     self.stores = []
+    self.defn = defn  # AnnSchema
 
   def is_lazy(self):
     return self.defn is None
@@ -50,6 +52,6 @@ class RTAnn(object):
 class RTManager(object):
   __slots__ = ('doc', 'klasses')
 
-  def __init__(self, doc):
+  def __init__(self, doc=None):
     self.doc = doc  # RTAnn
     self.klasses = []  # [ RTAnn ]

@@ -81,6 +81,7 @@ class Base(object):
       self.__dict__[name] = field.default()
     for name, store in self._dr_stores.iteritems():
       self.__dict__[name] = store.default()
+    self._dr_lazy = None
 
     for k, v in kwargs.iteritems():
       setattr(self, k, v)
