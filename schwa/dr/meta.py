@@ -1,23 +1,25 @@
 # vim: set ts=2 et:
 import StringIO
 
-from .fields import BaseField, BaseStore
+from .fields import BaseField, Store
 
-__all__ = ['Ann', 'Doc']
+__all__ = ['Ann', 'Doc', 'Meta']
 
 
-class DocrepMeta(type):
+class Meta(type):
+  registered = {}  # { _dr_name : klass }
+
   def __new__(mklass, klass_name, bases, attrs):
     # construct the class
-    klass = super(DocrepMeta, mklass).__new__(mklass, klass_name, bases, attrs)
+    klass = super(Meta, mklass).__new__(mklass, klass_name, bases, attrs)
 
-    # discover the BaseField and BaseStore instances
+    # discover the Field and Store instances
     stores, fields = {}, {}
     for base in bases:
       stores.update(getattr(base, '_dr_stores', {}))
       fields.update(getattr(base, '_dr_fields', {}))
     for name, attr in attrs.iteritems():
-      if isinstance(attr, BaseStore):
+      if isinstance(attr, Store):
         stores[name] = attr
       elif isinstance(attr, BaseField):
         fields[name] = attr
@@ -28,13 +30,26 @@ class DocrepMeta(type):
 
     # add the name
     meta = attrs.get('Meta', None)
+    if hasattr(meta, 'name'):
+      klass._dr_name = meta.name
+    else:
+      klass._dr_name = klass_name
     if hasattr(meta, 'serial'):
       klass._dr_serial = meta.serial
     else:
       klass._dr_serial = klass_name
+    if hasattr(meta, 'help'):
+      klass._dr_help = meta.help
+    else:
+      klass._dr_help = ''
+
+    # ensure _dr_name's are unique
+    if klass._dr_name in Meta.registered:
+      raise ValueError('The name {0!r} has already been registered by another class ({1})'.format(klass._dr_name, Meta.registered[klass._dr_name]))
+    Meta.registered[klass._dr_name] = klass
 
     # construct the docstring for the class
-    DocrepMeta.add_docstring(klass)
+    Meta.add_docstring(klass)
 
     return klass
 
@@ -59,13 +74,13 @@ class DocrepMeta(type):
 
 
 class Base(object):
-  __metaclass__ = DocrepMeta
+  __metaclass__ = Meta
 
   def __init__(self, **kwargs):
     for name, field in self._dr_fields.iteritems():
-      setattr(self, name, field.default())
+      self.__dict__[name] = field.default()
     for name, store in self._dr_stores.iteritems():
-      setattr(self, name, store.default())
+      self.__dict__[name] = store.default()
 
     for k, v in kwargs.iteritems():
       setattr(self, k, v)
@@ -80,7 +95,8 @@ class Base(object):
 
 
 class Ann(Base):
-  pass
+  class Meta:
+    name = 'schwa.dr.meta.Ann'
 
 
 class Doc(Base):
@@ -96,3 +112,6 @@ class Doc(Base):
   def ready(self):
     """Hook called after a Document and all its Stores are loaded."""
     pass
+
+  class Meta:
+    name = 'schwa.dr.meta.Doc'

@@ -2,7 +2,7 @@
 import msgpack
 
 from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
-from .fields import Field, Pointer, Pointers, SelfPointer, SelfPointers, Singleton, Slice, Store
+from .fields import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice, Store
 from .runtime import RTField, RTStore, RTAnn, RTManager
 from .meta import Ann, Doc
 

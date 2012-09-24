@@ -6,7 +6,7 @@ import msgpack
 from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE
 from .exceptions import StoreException
 from .fields import Pointer, Slice
-from .meta import Document
+from .meta import Doc
 
 __all__ = ['Writer']
 
@@ -84,8 +84,8 @@ class Writer(object):
     self._packer = msgpack.Packer()
 
   def write_doc(self, doc):
-    if not isinstance(doc, Document):
-      raise ValueError('You can only stream instances of Document')
+    if not isinstance(doc, Doc):
+      raise ValueError('You can only stream instances of Doc')
 
     # run along each of the Stores and update the _dr_index attributes
     for name, store in doc._dr_stores.iteritems():
