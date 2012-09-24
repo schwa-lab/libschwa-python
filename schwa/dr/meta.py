@@ -113,5 +113,10 @@ class Doc(Base):
     """Hook called after a Document and all its Stores are loaded."""
     pass
 
+  @classmethod
+  def schema(klass):
+    from .schema import create_schema
+    return create_schema(klass)
+
   class Meta:
     name = 'schwa.dr.meta.Doc'
