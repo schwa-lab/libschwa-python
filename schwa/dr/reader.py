@@ -6,7 +6,7 @@ import msgpack
 from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
 from .exceptions import ReaderException
 from .runtime import RTField, RTStore, RTAnn, RTManager
-from .meta import Ann, Doc
+from .meta import Doc
 from .schema import DocSchema
 
 __all__ = ['Reader']
@@ -59,6 +59,13 @@ class Reader(object):
     self._read_klasses()
     self._read_stores()
     self._backfill_pointer_fields()
+
+    # read instances
+    self._read_doc_instance()
+    self._read_instances()
+
+    # call post-reading hook
+    self._doc.ready()
 
   def _read_klasses(self):
     # read <klasses> ::= [ <klass> ]
@@ -184,298 +191,35 @@ class Reader(object):
           # backfill
           field.points_to = rtstore
 
-
-# =============================================================================
-# =============================================================================
-def serialised_instance_to_dict(obj, wire_type):
-  """
-  Converts a serialised instance obj to a dictionary which can be
-  used as the kwargs for the constructor of the class represented
-  by wire_type.
-  """
-  instance = {}  # { serial : val }
-  for f in wire_type.fields:
-    val = obj.get(f.number)
-    if val is not None:
-      if f.is_range:
-        assert len(val) == 2
-        val = slice(val[0], val[1])
-      if f.is_pointer and isinstance(val, (list, tuple)):
-        f.set_collection()
-      instance[f.name] = val
-  return instance
-
-
-def instantiate_instance(instance, klass):
-  """
-  Converts a dictionary returned by serialised_instance_to_dict into an actual
-  Python object of type klass
-  """
-  s2p = klass._dr_s2p
-  vals = dict((s2p[k], v) for k, v in instance.iteritems())
-  return klass.from_wire(**vals)
-
-
-class WireStore(object):
-  __slots__ = ('name', 'nelem', 'wire_type', 'is_collection', '_instances', 'store')
-
-  def __init__(self, name, nelem, wire_type):
-    self.name = name
-    self.nelem = nelem
-    self.wire_type = wire_type
-    self.is_collection = True
-    self._instances = []
-    self.store = None
-
-  def add_instance(self, obj):
-    instance = serialised_instance_to_dict(obj, self.wire_type)
-    self._instances.append(instance)
-
-  def instantiate_instances(self):
-    klass = self.wire_type.klass()
-    for i in self._instances:
-      yield instantiate_instance(i, klass)
-
-
-class WireField(object):
-  __slots__ = ('number', 'name', 'pointer_to', 'is_range', 'is_collection', '_dr_field')
-
-  def __init__(self, number, field):
-    self.number = number
-    self.name = field[FIELD_TYPE_NAME]
-    self.pointer_to = field.get(FIELD_TYPE_POINTER_TO)
-    self.is_range = FIELD_TYPE_IS_SLICE in field
-    self.is_collection = False
-    self._dr_field = None
-
-  def __repr__(self):
-    return 'WireField({0!r})'.format(self.name)
-
-  def __str__(self):
-    return self.name
-
-  @property
-  def is_pointer(self):
-    return self.pointer_to is not None
-
-  def set_collection(self, val=True):
-    self.is_collection = val
-    if self._dr_field is not None:
-      self._dr_field.is_collection = val
-
-  def dr_field(self):
-    if self._dr_field is None:
-      if self.is_range:
-        if self.is_pointer:
-          store = self.pointer_to.name
-          klass = self.pointer_to.wire_type.name
-          self._dr_field = Slice(klass, store=store, serial=self.name)
-        else:
-          self._dr_field = Slice(serial=self.name)
-      elif self.is_pointer:
-        store = self.pointer_to.name
-        klass = self.pointer_to.wire_type.name
-        if self.is_collection:
-          self._dr_field = Pointers(klass, store=store, serial=self.name)
-        else:
-          self._dr_field = Pointer(klass, store=store, serial=self.name)
+  def _process_instance(self, rtschema, instance, obj):
+    # <instance> ::= { <field_id> : <obj_val> }
+    for key, val in instance.iteritems():
+      rtfield = rtschema.fields[key]
+      if rtfield.is_lazy():
+        if obj._dr_lazy is None:
+          obj._dr_lazy = {}
+        obj._dr_lazy[key] = val
       else:
-        self._dr_field = Field(serial=self.name)
-    return self._dr_field
+        setattr(obj, rtfield.defn.name, val)
 
+  def _read_doc_instance(self):
+    # read the document instance <doc_instance> ::= <instances_nbytes> <instance>
+    self._unpacker.unpack()  # nbytes
+    instance = self._unpacker.unpack()
+    self._process_instance(self._doc._dr_rt.doc, instance, self._doc)
 
-class WireType(object):
-  __slots__ = ('number', 'name', 'fields', 'pointer_fields', 'is_meta', 'module', '_klass')
+  def _read_instances(self):
+    # <instances_groups> ::= <instances_group>*
+    for rtstore in self._doc._dr_rt.doc.stores:
+      # <instances_group>  ::= <instances_nbytes> <instances>
+      self._unpacker.unpack()  # nbytes
+      instances = self._unpacker.unpack()
 
-  by_number = {}
-
-  def __init__(self, number, name, klass_fields, module=None):
-    self.number = number
-    self.name = name
-    self.fields = [WireField(i, f) for i, f in enumerate(klass_fields)]
-    self.pointer_fields = [f for f in self.fields if f.is_pointer and not f.is_range]
-    self.is_meta = name == '__meta__'
-    self.module = module
-    self._klass = None
-    WireType.by_number[number] = self
-
-  def __repr__(self):
-    return 'WireType({0!r})'.format(self.name)
-
-  def __str__(self):
-    return self.name
-
-  def create_klass(self, doc_klass=None):
-    if self._klass is not None:
-      return
-
-    if self.is_meta:
-      if doc_klass is None:
-        klass_name = 'Document'
-        klass = AnnotationMeta.cached(klass_name, self.module)
+      if rtstore.is_lazy():
+        rtstore.lazy = instances
       else:
-        klass = doc_klass
-    else:
-      klass_name = self.name
-      klass = AnnotationMeta.cached(klass_name, self.module)
-
-    dr_fields = dict((f.name, f.dr_field()) for f in self.fields)
-    if klass is None:
-      dr_fields['__module__'] = self.module
-      if self.is_meta:
-        klass = type(klass_name, (Document, ), dr_fields)
-      else:
-        klass = type(klass_name, (Annotation, ), dr_fields)
-    else:
-      klass.update_attrs(dr_fields)
-    self._klass = klass
-    return self._klass
-
-  def klass(self):
-    return self._klass
-
-
-#class Reader(object):
-  #__slots__ = ('_doc_klass', '_meta_module', '_unpacker', '_doc')
-
-  #def __init__(self, doc_klass=None):
-    #self._doc_klass = doc_klass
-    #if doc_klass and not issubclass(doc_klass, Document):
-      #raise ValueError('"doc_klass" must be a subclass of Document')
-    #self._meta_module = AnnotationMeta.generate_module()
-    #if doc_klass:
-      ## Register aliases for known types
-      #AnnotationMeta.register(doc_klass, self._meta_module)
-      #for name, store in doc_klass._dr_stores.iteritems():
-        #if store._klass:
-          #AnnotationMeta.register(store._klass, self._meta_module)
-
-  #def __iter__(self):
-    #return self
-
-  #def next(self):
-    #self._read_doc()
-    #if self._doc is None:
-      #raise StopIteration()
-    #return self._doc
-
-  #def stream(self, istream):
-    #self._unpacker = msgpack.Unpacker(istream)
-    #return self
-
-  #def _unpack(self):
-    #try:
-        #obj = self._unpacker.unpack()
-    #except StopIteration:
-        #return None
-    #return obj
-
-  #def _update_pointers(self, objs, pointer_fields):
-    #for obj in objs:
-      #for field in pointer_fields:
-        #old = getattr(obj, field.name)
-        #if old is None:
-          #continue
-        #store = getattr(self._doc, field.pointer_to.name)
-        #if field.is_collection:
-          #new = [store[i] for i in old]
-        #else:
-          #new = store[old]
-        #setattr(obj, field.name, new)
-
-  #def _read_doc(self):
-    ## attempt to read the header
-    #header = self._unpack()  # [ ( name, [ { field_key : field_val } ] ) ]
-    #if header is None:
-      #self._doc = None
-      #return
-
-    ## decode the klasses header
-    #wire_types, wire_meta = [], None
-    #for i, (klass_name, klass_fields) in enumerate(header):
-      #t = WireType(i, klass_name, klass_fields, self._meta_module)
-      #wire_types.append(t)
-      #if t.is_meta:
-        #wire_meta = t
-    #assert wire_meta is not None
-
-    ## decode the stores header
-    #header = self._unpack()  # [ ( store_name, klass_id, store_nelem ) ]
-    #wire_stores = []
-    #for name, klass_id, nelem in header:
-      #wire_type = WireType.by_number[klass_id]
-      #wire_stores.append(WireStore(name, nelem, wire_type))
-
-    ## update the POINTER_TO values in the WireFields to point to their corresponding WireStore objects
-    #for t in wire_types:
-      #for f in t.fields:
-        #if f.is_pointer:
-          #f.pointer_to = wire_stores[f.pointer_to]
-
-    ## instantiate / create each of the required classes
-    #for t in wire_types:
-      #if not t.is_meta:
-        #t.create_klass()
-
-    ## decode the document instance
-    #self._unpack()  # nbytes (unused in the Python API)
-    #doc_blob = self._unpack()
-    #assert isinstance(doc_blob, dict)
-
-    ## decode each of the instances groups
-    #for s in wire_stores:
-      #self._unpack()  # nbytes (unused in the Python API)
-      #blob = self._unpack()
-
-      #if isinstance(blob, dict):
-        #s.is_collection = False
-        #s.add_instance(blob)
-      #else:
-        #assert isinstance(blob, (list, tuple))
-        #for obj in blob:
-          #s.add_instance(obj)
-
-    ## instantiate each of the Stores
-    #stores = {}
-    #for s in wire_stores:
-      #klass = s.wire_type.klass()
-      #storage = Store if s.is_collection else Singleton
-      #stores[s.name] = s.store = storage(klass)
-
-    ## create and update the Document type
-    #self._doc_klass = wire_meta.create_klass(self._doc_klass)
-    #self._doc_klass.update_attrs(stores)
-
-    ## instantiate the Document
-    #doc_vals = serialised_instance_to_dict(doc_blob, wire_meta)
-    #self._doc = instantiate_instance(doc_vals, self._doc_klass)
-
-    ## instantiate all of the instances
-    #for s in wire_stores:
-      #if s.is_collection:
-        #s.name = self._doc._dr_s2p[s.name]
-        #store = getattr(self._doc, s.name)
-        #store.clear()
-        #for obj in s.instantiate_instances():
-          #store.append(obj)
-      #else:
-        #objs = tuple(s.instantiate_instances())
-        #assert len(objs) == 1
-        #setattr(self._doc, s.name, objs[0])
-
-    ## update the pointers on the document
-    #pointer_fields = wire_meta.pointer_fields
-    #if pointer_fields:
-      #self._update_pointers((self._doc, ), pointer_fields)
-
-    ## update the pointers on the instances
-    #for s in wire_stores:
-      #pointer_fields = s.wire_type.pointer_fields
-      #if pointer_fields:
-        #objs = getattr(self._doc, s.name)
-        #if not s.is_collection:
-          #objs = (objs, )
-        #self._update_pointers(objs, pointer_fields)
-
-    ## call post-reading hook.
-    #self._doc.ready()
+        rtschema = rtstore.klass
+        store = getattr(self._doc, rtstore.defn.name)
+        for instance in instances:
+          obj = store.create()
+          self._process_instance(rtschema, instance, obj)
