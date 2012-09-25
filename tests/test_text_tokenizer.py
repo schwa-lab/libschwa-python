@@ -33,22 +33,25 @@ OUTPUT = [
 ]
 
 
-class Document(dr.Doc):
-  tokens = dr.Store('Token')
-  sentences = dr.Store('Sentence')
-  paragraphs = dr.Store('Paragraph')
+class Token(dr.Ann):
+  span = dr.Slice()
+  raw = dr.Field()
+  norm = dr.Field()
 
 
 class Sentence(dr.Ann):
-  span = dr.Slice('Token')
+  span = dr.Slice(Token)
 
 
 class Paragraph(dr.Ann):
-  span = dr.Slice('Sentence')
+  span = dr.Slice(Sentence)
 
 
-class Token(dr.Token):
-  pass
+class Document(dr.Doc):
+  tokens = dr.Store(Token)
+  sentences = dr.Store(Sentence)
+  paragraphs = dr.Store(Paragraph)
+
 
 sentence_on_tokens = dr.decorators.reverse_slices('sentences', 'tokens', 'span', 'sentence')
 paragraphs_on_sentences = dr.decorators.reverse_slices('paragraphs', 'sentences', 'span', 'paragraph')

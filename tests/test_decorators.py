@@ -18,6 +18,9 @@ class MyAnnot(dr.Ann):
   def __repr__(self):
     return '{}(field={}, children={}, child={})'.format(self.__class__.__name__, self.field, self.children, self.child)
 
+  class Meta:
+    name = 'MyAnnot'
+
 
 class SliceAnnot(dr.Ann):
   span = dr.Slice('MyAnnot')
@@ -26,9 +29,15 @@ class SliceAnnot(dr.Ann):
   def __repr__(self):
     return '{}(span={}, name={})'.format(self.__class__.__name__, self.span, self.name)
 
+  class Meta:
+    name = 'SliceAnnot'
+
 
 class SuperSliceAnnot(dr.Ann):
   slice_span = dr.Slice('SliceAnnot')
+
+  class Meta:
+    name = 'SuperSliceAnnot'
 
 
 class SliceDecoratorsTest(TestCase):
@@ -539,20 +548,24 @@ class StoreSubsetTest(TestCase):
 
 class ApplicationsTest(TestCase):
   def real_world_applications_test(self):
-    class Doc(dr.Doc):
-      tokens = dr.Store('Token')
-      entities = dr.Store('Entity')
+    class Token(dr.Ann):
+      span = dr.Slice()
+      raw = dr.Field()
+      norm = dr.Field()
 
-    class Token(dr.Token):
       def __repr__(self):
         return 'Token(norm={0!r}, span={1}:{2})'.format(self.norm, self.span.start, self.span.stop)
 
     class Entity(dr.Ann):
-      token_span = dr.Slice('Token')
+      token_span = dr.Slice(Token)
       type = dr.Field()
 
       def __repr__(self):
         return 'Entity(type={0!r}, token_span={1}:{2})'.format(self.type, self.token_span.start, self.token_span.stop)
+
+    class Doc(dr.Doc):
+      tokens = dr.Store(Token)
+      entities = dr.Store(Entity)
 
     #       0         1         2         3         4         5         6         7         8
     #       0123456789012345678901234567890123456789012345678901234567890123456789012345678901
