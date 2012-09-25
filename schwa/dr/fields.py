@@ -1,5 +1,5 @@
 # vim: set ts=2 et:
-from .collections import StoreList
+from .containers import StoreList
 
 __all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'SelfPointer', 'SelfPointers', 'Slice', 'Store']
 

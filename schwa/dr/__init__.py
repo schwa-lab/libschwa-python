@@ -1,5 +1,5 @@
 # vim: set ts=2 et:
-from .collections import StoreList
+from .containers import StoreList
 from .decoration import Decorator, decorator, method_requires_decoration, requires_decoration
 from .exceptions import DependencyException, ReaderException
 from .fields import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice, Store

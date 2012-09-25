@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+# vim: set ts=2 et:
 from collections import defaultdict
 from functools import partial
 from operator import attrgetter
@@ -7,14 +7,14 @@ from types import StringTypes, TupleType
 
 from .decoration import Decorator
 
+__all__ = ['add_prev_next', 'build_index', 'build_multi_index', 'materialise_slices', 'reverse_slices', 'find_contained_slices', 'convert_slices', 'reverse_pointers']
+
 
 def _attrsetter(attr):
   if attr is None:
-    def fn(obj, val):
-      pass
+    fn = lambda obj, val: None
   else:
-    def fn(obj, val):
-      setattr(obj, attr, val)
+    fn = lambda obj, val: setattr(obj, attr, val)
 
   # Set a default value like any other value
   fn.default = fn
@@ -205,8 +205,8 @@ class find_contained_slices(Decorator):
   """
   Adds collection_attr to each containing_store object O, being a list of the
   objects in contained_store with a contained_slice that is a sub-span of O's
-  containing_slice value. 
-  
+  containing_slice value.
+
   If contained_store (or contained_slice) is None, the value is copied from
   containing_store (containing_slice). In this case, each O will not be
   included in its contained objects collection.

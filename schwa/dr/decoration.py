@@ -1,10 +1,10 @@
 """
 Utilities for managing document decoration by marking the document with the set of decorations that have been applied to it.
 """
-
-from __future__ import absolute_import
 from collections import defaultdict
 from functools import wraps, partial
+
+__all__ = ['Decorator', 'decorator', 'method_requires_decoration', 'requires_decoration']
 
 
 def decorator(key=None):
@@ -46,9 +46,9 @@ class Decorator(object):
   def _set_affected_fields(self, *args):
     """
     Stores a list of fields affected (i.e. set) for this decorator, aiding in reflexion and undo operations.
-    
+
     Elements of args should be (store, field) pairs, or just an attr string for attributes of the document set by the decorator.
-    
+
     Where store, field or attr are not strings or None for any of the args, affected fields will not be stored.
     """
     field_map = defaultdict(set)
