@@ -1,5 +1,5 @@
 # vim: set ts=2 et:
-__all__ = ['RTField', 'RTStore', 'RTAnn', 'RTManager']
+__all__ = ['RTField', 'RTStore', 'RTAnn', 'RTManager', 'build_rt', 'merge_rt']
 
 
 class RTField(object):
@@ -55,3 +55,11 @@ class RTManager(object):
   def __init__(self, doc=None):
     self.doc = doc  # RTAnn
     self.klasses = []  # [ RTAnn ]
+
+
+def build_rt(dschema):
+  pass
+
+
+def merge_rt(rt, dschema):
+  pass

@@ -5,6 +5,41 @@ from .exceptions import DependencyException
 __all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'SelfPointer', 'SelfPointers', 'Slice', 'Store']
 
 
+def from_wire_pointer(val, store):
+  if val is None:
+    return None
+  return store[val]
+
+
+def to_wire_pointer(obj, store):
+  if obj is None:
+    return None
+  if not hasattr(obj, '_dr_index'):
+    raise ValueError('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
+  assert store[obj._dr_index] is obj
+  return obj._dr_index
+
+
+def from_wire_pointers(vals, store):
+  if not vals:
+    return None
+  return [store[i] for i in vals]
+
+
+def to_wire_pointers(objs, store):
+  if not objs:
+    return None
+  indices = []
+  for obj in objs:
+    if not hasattr(obj, '_dr_index'):
+      raise ValueError('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
+    assert store[obj._dr_index] is obj
+    indices.append(obj._dr_index)
+  return indices
+
+
+# =============================================================================
+# =============================================================================
 class BaseAttr(object):
   __slots__ = ('serial', 'help')
 
@@ -13,7 +48,9 @@ class BaseAttr(object):
     self.help = help
 
   def default(self):
-    """Returns the default value for this type when it is instantiated."""
+    """
+    Returns the default value for this type when it is instantiated.
+    """
     raise NotImplementedError
 
   def resolve_klasses(self):
@@ -27,12 +64,40 @@ class BaseAttr(object):
 # =============================================================================
 # =============================================================================
 class BaseField(BaseAttr):
-  pass
+  def from_wire(self, val, rtfield, cur_store, doc):
+    """
+    Deserialization hook for converting msgpack values into Python values
+    specific to this field type.
+    @param val the value return from msgpack unpacking
+    @param rtfield the RTField instance for the current field
+    @param cur_store the Store instance that the value is from
+    @param doc the current Doc instance
+    """
+    raise NotImplementedError
+
+  def to_wire(self, obj, rtfield, cur_store, doc):
+    """
+    Serialization hook for converting Python values into msgpack values
+    specific to this field type.
+    @param val the value return from msgpack unpacking
+    @param rtfield the RTField instance for the current field
+    @param cur_store the Store instance that the value is from
+    @param doc the current Doc instance
+    """
+    raise NotImplementedError
 
 
 class Field(BaseField):
   def default(self):
     return None
+
+  def from_wire(self, val, rtfield, cur_store, doc):
+    return val
+
+  def to_wire(self, obj, rtfield, cur_store, doc):
+    if isinstance(obj, unicode):
+      obj = obj.encode('utf-8')
+    return obj
 
   def resolve_klasses(self):
     pass
@@ -61,6 +126,12 @@ class Pointer(BaseField):
   def default(self):
     return None
 
+  def from_wire(self, val, rtfield, cur_store, doc):
+    return from_wire_pointer(val, getattr(doc, rtfield.points_to.defn.name))
+
+  def to_wire(self, obj, rtfield, cur_store, doc):
+    return to_wire_pointer(obj, getattr(doc, rtfield.points_to.defn.name))
+
 
 class Pointers(Pointer):
   def __init__(self, klass, store=None, serial=None, help=None):
@@ -69,6 +140,12 @@ class Pointers(Pointer):
 
   def default(self):
     return []
+
+  def from_wire(self, vals, rtfield, cur_store, doc):
+    return from_wire_pointers(vals, getattr(doc, rtfield.points_to.defn.name))
+
+  def to_wire(self, objs, rtfield, cur_store, doc):
+    return to_wire_pointers(objs, getattr(doc, rtfield.points_to.defn.name))
 
 
 class SelfPointer(BaseField):
@@ -84,6 +161,12 @@ class SelfPointer(BaseField):
   def resolve_klasses(self):
     pass
 
+  def from_wire(self, val, rtfield, cur_store, doc):
+    return from_wire_pointer(val, cur_store)
+
+  def to_wire(self, obj, rtfield, cur_store, doc):
+    return to_wire_pointer(obj, cur_store)
+
 
 class SelfPointers(SelfPointer):
   def __init__(self, serial=None, help=None):
@@ -92,6 +175,12 @@ class SelfPointers(SelfPointer):
 
   def default(self):
     return []
+
+  def from_wire(self, vals, rtfield, cur_store, doc):
+    return from_wire_pointers(vals, cur_store)
+
+  def to_wire(self, objs, rtfield, cur_store, doc):
+    return to_wire_pointers(objs, cur_store)
 
 
 class Slice(BaseField):
@@ -122,6 +211,16 @@ class Slice(BaseField):
   def resolve_klasses(self):
     if not self.is_byteslice():
       super(Slice, self).resolve_klasses()
+
+  def from_wire(self, val, rtfield, cur_store, doc):
+    if val is None:
+      return None
+    return slice(val[0], val[1])
+
+  def to_wire(self, obj, rtfield, cur_store, doc):
+    if obj is None:
+      return None
+    return (obj.start, obj.stop)
 
 
 # =============================================================================

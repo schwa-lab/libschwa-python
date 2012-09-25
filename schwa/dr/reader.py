@@ -191,7 +191,7 @@ class Reader(object):
           # backfill
           field.points_to = rtstore
 
-  def _process_instance(self, rtschema, instance, obj):
+  def _process_instance(self, rtschema, instance, obj, store):
     # <instance> ::= { <field_id> : <obj_val> }
     for key, val in instance.iteritems():
       rtfield = rtschema.fields[key]
@@ -200,13 +200,15 @@ class Reader(object):
           obj._dr_lazy = {}
         obj._dr_lazy[key] = val
       else:
+        field = rtfield.defn.defn
+        val = field.from_wire(val, rtfield, store, self._doc)
         setattr(obj, rtfield.defn.name, val)
 
   def _read_doc_instance(self):
     # read the document instance <doc_instance> ::= <instances_nbytes> <instance>
     self._unpacker.unpack()  # nbytes
     instance = self._unpacker.unpack()
-    self._process_instance(self._doc._dr_rt.doc, instance, self._doc)
+    self._process_instance(self._doc._dr_rt.doc, instance, self._doc, None)
 
   def _read_instances(self):
     # <instances_groups> ::= <instances_group>*
@@ -222,4 +224,4 @@ class Reader(object):
         store = getattr(self._doc, rtstore.defn.name)
         for instance in instances:
           obj = store.create()
-          self._process_instance(rtschema, instance, obj)
+          self._process_instance(rtschema, instance, obj, store)

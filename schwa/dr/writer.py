@@ -1,201 +1,331 @@
 # vim: set ts=2 et:
-import cStringIO
+import inspect
 
 import msgpack
 
-from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE
-from .exceptions import StoreException
-from .fields import Pointer, Slice
+from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
+from .runtime import build_rt, merge_rt
 from .meta import Doc
+from .schema import DocSchema
 
 __all__ = ['Writer']
 
 
-class Type(object):
-  __slots__ = ('klass', 'number', 'is_meta', 'fields', '_p2i', '_i2p')
-
-  def __init__(self, klass, number, is_meta=False):
-    self.klass = klass
-    self.number = number
-    self.is_meta = is_meta
-    self.fields = []
-    self._p2i = {}  # { index : pyname }
-    self._i2p = {}  # { pyname : index }
-    for i, (pyname, field) in enumerate(klass._dr_fields.iteritems()):
-      self._p2i[pyname] = i
-      self._i2p[i] = pyname
-      f = {}
-      f[FIELD_TYPE_NAME] = field.serial or pyname
-      if isinstance(field, Pointer):
-        f[FIELD_TYPE_POINTER_TO] = field  # placeholder
-      elif isinstance(field, Slice):
-        f[FIELD_TYPE_IS_SLICE] = True
-        if field._klass is not None:
-          f[FIELD_TYPE_POINTER_TO] = field  # placeholder
-      self.fields.append(f)
-
-  def __repr__(self):
-    return 'Type({0!r})'.format(self.name())
-
-  def __str__(self):
-    return self.name()
-
-  def name(self):
-    if self.is_meta:
-      return '__meta__'
-    return self.klass._dr_name
-
-  def pyname_to_index(self, pyname):
-    return self._p2i[pyname]
-
-  def index_to_pyname(self, index):
-    return self._i2p[index]
-
-
-def types_from_doc(doc):
-  """
-  Find all of the types used by a document. Returns a dictionary, mapping from
-  the Python classes to their corresponding Type instance.
-  """
-  types = {}  # { klass : Type }
-  types[doc.__class__] = Type(doc.__class__, len(types), is_meta=True)
-  for name, store in sorted(doc._dr_stores.items(), key=lambda (k, v): k):
-    if store._klass not in types:
-      types[store._klass] = Type(store._klass, len(types))
-  return types
-
-
-def swizzle_ptr(ptr):
-  """
-  Swizzles a Pointer instance. The ptr argument is assumed not to be None.
-  """
-  if not hasattr(ptr, '_dr_index'):
-    raise ValueError('Cannot serialize a pointer to object {0!r} which is not managed by a Store'.format(ptr))
-  return ptr._dr_index
-
-
 class Writer(object):
-  __slots__ = ('_ostream', '_packer')
+  __slots__ = ('_ostream', '_packer', '_doc_schema')
 
-  def __init__(self, ostream):
+  WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
+
+  def __init__(self, ostream, arg):
     if not hasattr(ostream, 'write'):
-        raise TypeError('"ostream" must have a write attr')
+      raise TypeError('ostream must have a write attr')
     self._ostream = ostream
+    if isinstance(arg, DocSchema):
+      self._doc_schema = arg
+    elif inspect.isclass(arg) and issubclass(arg, Doc):
+      self._doc_schema = arg.schema()
+    else:
+      raise TypeError('Invalid value for arg. Must be either a DocSchema instance or a Doc subclass')
     self._packer = msgpack.Packer()
 
-  def write_doc(self, doc):
+  def write(self, doc):
     if not isinstance(doc, Doc):
       raise ValueError('You can only stream instances of Doc')
 
-    # run along each of the Stores and update the _dr_index attributes
-    for name, store in doc._dr_stores.iteritems():
-      val = getattr(doc, name)
-      if store.is_collection():
-        for i, obj in enumerate(val):
-          obj._dr_index = i
-      elif val:
-        val._dr_index = 0
+    # get or construct the RTManager for the document
+    if doc._dr_rt is None:
+      rt = doc._dr_rt = build_rt(self._doc_schema)
+    else:
+      rt = doc._dr_rt = merge_rt(doc._dr_rt, self._doc_schema)
 
-    # find all of the types defined
-    types = types_from_doc(doc)  # { klass : Type }
-    doc_type = types[doc.__class__]
+    # write wire version
+    self._pack(Writer.WIRE_VERSION)
 
-    # create a mapping from Store names and classes to Store objects
-    sorted_dr_stores = sorted(doc._dr_stores.items(), key=lambda (k, v): k)
-    stores = {}  # { klass : store_id } \cup { pyname : store_id }
-    for i, (pyname, store) in enumerate(sorted_dr_stores):
-      stores[pyname] = i
-      if store._klass in stores:
-        stores[store._klass].append(i)
-      else:
-        stores[store._klass] = [i]
+    # write headers
+    self._pack(self._build_klasses(doc, rt))
+    self._pack(self._build_stores(doc, rt))
 
-    # construct the klasses header
-    header = [None] * len(types)
-    for klass, t in types.iteritems():
+    # write instances
+    self._write_doc_instance(doc, rt)
+    self._write_instances(doc, rt)
+
+  def _pack(self, value):
+    packed = self._packer.pack(value)
+    self._ostream.write(packed)
+
+  def _pack_prefixed(self, value):
+    packed = self._packer.pack(value)
+    self._pack(len(packed))
+    self._ostream.write(packed)
+
+  def _build_klasses(self, doc, rt):
+    # <klasses> ::= [ <klass> ]
+    klasses = []
+
+    for klass in rt.klasses:
+      # <fields> ::= [ <field> ]
       fields = []
-      for field in t.fields:
-        f = field.copy()
-        pointer_to = f.get(FIELD_TYPE_POINTER_TO)  # is a dr.Field instance
-        if pointer_to is not None:
-          if pointer_to.store:
-            if pointer_to.store not in stores:
-              raise StoreException('Store name {0!r} does not exist for field {1!r} of class {2}'.format(pointer_to.store, f[FIELD_TYPE_NAME], pointer_to._klass))
-            store_id = stores[pointer_to.store]
-          else:
-            store_ids = stores.get(pointer_to._klass, [])
-            if len(store_ids) == 1:
-              store_id = store_ids[0]
-            elif len(store_ids) == 0:
-              raise StoreException('No Store was found for class {0} (for field {1!r})'.format(pointer_to._klass, f[FIELD_TYPE_NAME]))
-            else:
-              raise StoreException('The field {0!r} of class {1} needs to specify which Store it points to, as there are {2} potential Stores'.format(f[FIELD_TYPE_NAME], pointer_to._klass, len(store_ids)))
-          f[FIELD_TYPE_POINTER_TO] = store_id
-        fields.append(f)
-      header[t.number] = (t.name(), fields)
-    self._pack(header)
+      for f in klass.fields:
+        # <field> ::= { <field_type> : <field_val> }
+        field = {}
+        fields.append(field)
+        # <field_type> ::= 0 # NAME => the name of the field
+        field[FIELD_TYPE_NAME] = f.serial if f.is_lazy() else f.defn.serial
+        # <field_type> ::= 1 # POINTER_TO => the <store_id> that this field points into
+        if f.is_pointer:
+          field[FIELD_TYPE_POINTER_TO] = f.points_to.store_id
+        # <field_type> ::= 2 # IS_SLICE => whether or not this field is a "Slice" field
+        if f.is_slice:
+          field[FIELD_TYPE_IS_SLICE] = None
+        # <field_type>  ::= 3 # IS_SELF_POINTER => whether or not this field is a self-pointer
+        if f.is_self_pointer:
+          field[FIELD_TYPE_IS_SELF_POINTER] = None
 
-    # construct the stores header
-    header = []
-    for pyname, store in sorted_dr_stores:
-      name = store.serial or pyname
-      klass_id = types[store._klass].number
-      nelem = 0 if not store.is_collection() else len(getattr(doc, pyname))
-      header.append((name, klass_id, nelem))
-    self._pack(header)
-
-    # write out the document itself
-    tmp = cStringIO.StringIO()
-    self._pack(self._serialize(doc, doc_type), tmp)
-    self._pack(len(tmp.getvalue()))
-    self._ostream.write(tmp.getvalue())
-
-    # write out each of the annotation sets
-    for pyname, store in sorted_dr_stores:
-      t = types[store._klass]
-      tmp = cStringIO.StringIO()
-
-      if store.is_collection():
-        msg_objs = []
-        for obj in getattr(doc, pyname):
-          msg_objs.append(self._serialize(obj, t))
-        self._pack(msg_objs, tmp)
+      # work out the serial name for the class
+      if klass is rt.doc:
+        klass_name = '__meta__'
+      elif klass.is_lazy():
+        klass_name = klass.serial
       else:
-        msg_obj = self._serialize(getattr(doc, pyname), t)
-        self._pack(msg_obj, tmp)
+        klass_name = klass.defn.serial
 
-      self._pack(len(tmp.getvalue()))
-      self._ostream.write(tmp.getvalue())
+      # <klass> ::= ( <klass_name>, <fields> )
+      klass = (klass_name, fields)
+      klasses.append(klass)
 
-    self._ostream.flush()
+    return klasses
 
-  def _pack(self, obj, out=None):
-    if out is None:
-      out = self._ostream
-    out.write(self._packer.pack(obj))
+  def _build_stores(self, doc, rt):
+    # <stores> ::= [ <store> ]
+    stores = []
 
-  def _serialize(self, obj, t):
-    """
-    Returns a Python object which represents the serialised form of object obj,
-    which is of type t. The return value can be passed directly to the msgpack
-    serialisation process -- it contains only values which msgpack can directly
-    serialise.
-    """
-    msg_obj = {}
-    for pyname, field in obj._dr_fields.iteritems():
-      val = getattr(obj, pyname)
-      if hasattr(field, 'to_wire'):
-        val = field.to_wire(val)
+    for s in rt.doc.stores:
+      # // <store> ::= ( <store_name>, <type_id>, <store_nelem> )
+      store_name = s.serial if s.is_lazy() else s.defn.serial
+      klass_id = s.klass.klass_id
+      nelem = len(s.lazy) if s.is_lazy() else len(getattr(doc, s.defn.name))
+      store = (store_name, klass_id, nelem)
+      stores.append(store)
+
+    return stores
+
+  def _build_instance(self, obj, store, doc, rtschema):
+    instance = {}
+    if obj._dr_lazy is not None:
+      instance.update(obj._dr_lazy)
+    for f in rtschema.fields:
+      if f.is_lazy():
+        continue
+      rtfield = f.defn
+      field = rtfield.defn
+      val = getattr(obj, f.defn.name)
+      val = field.to_wire(val, rtfield, store, doc)
       if val is None:
         continue
-      if isinstance(field, Pointer):
-        if field.is_collection:
-          val = map(swizzle_ptr, val)
-        else:
-          val = swizzle_ptr(val)
-      elif isinstance(field, Slice):
-        val = (val.start, val.stop)
-      elif isinstance(val, unicode):
-        val = val.encode('utf-8')
-      msg_obj[t.pyname_to_index(pyname)] = val
-    return msg_obj
+      instance[f.field_id] = val
+    return instance
+
+  def _write_doc_instance(self, doc, rt):
+    self._pack_prefixed(self._build_instance(doc, None, doc, rt.doc))
+
+  def _write_instances(self, doc, rt):
+    for rtstore in rt.doc.stores:
+      if rtstore.is_lazy():
+        self._pack_prefixed(rtstore.lazy)
+      else:
+        rtschema = rtstore.klass
+        store = getattr(doc, rtstore.defn.nanme)
+        instances = [self._build_instance(obj, store, doc, rtschema) for obj in store]
+        self._pack_prefixed(instances)
+
+
+## =============================================================================
+## =============================================================================
+#class Type(object):
+  #__slots__ = ('klass', 'number', 'is_meta', 'fields', '_p2i', '_i2p')
+
+  #def __init__(self, klass, number, is_meta=False):
+    #self.klass = klass
+    #self.number = number
+    #self.is_meta = is_meta
+    #self.fields = []
+    #self._p2i = {}  # { index : pyname }
+    #self._i2p = {}  # { pyname : index }
+    #for i, (pyname, field) in enumerate(klass._dr_fields.iteritems()):
+      #self._p2i[pyname] = i
+      #self._i2p[i] = pyname
+      #f = {}
+      #f[FIELD_TYPE_NAME] = field.serial or pyname
+      #if isinstance(field, Pointer):
+        #f[FIELD_TYPE_POINTER_TO] = field  # placeholder
+      #elif isinstance(field, Slice):
+        #f[FIELD_TYPE_IS_SLICE] = True
+        #if field._klass is not None:
+          #f[FIELD_TYPE_POINTER_TO] = field  # placeholder
+      #self.fields.append(f)
+
+  #def __repr__(self):
+    #return 'Type({0!r})'.format(self.name())
+
+  #def __str__(self):
+    #return self.name()
+
+  #def name(self):
+    #if self.is_meta:
+      #return '__meta__'
+    #return self.klass._dr_name
+
+  #def pyname_to_index(self, pyname):
+    #return self._p2i[pyname]
+
+  #def index_to_pyname(self, index):
+    #return self._i2p[index]
+
+
+#def types_from_doc(doc):
+  #"""
+  #Find all of the types used by a document. Returns a dictionary, mapping from
+  #the Python classes to their corresponding Type instance.
+  #"""
+  #types = {}  # { klass : Type }
+  #types[doc.__class__] = Type(doc.__class__, len(types), is_meta=True)
+  #for name, store in sorted(doc._dr_stores.items(), key=lambda (k, v): k):
+    #if store._klass not in types:
+      #types[store._klass] = Type(store._klass, len(types))
+  #return types
+
+
+#def swizzle_ptr(ptr):
+  #"""
+  #Swizzles a Pointer instance. The ptr argument is assumed not to be None.
+  #"""
+  #if not hasattr(ptr, '_dr_index'):
+    #raise ValueError('Cannot serialize a pointer to object {0!r} which is not managed by a Store'.format(ptr))
+  #return ptr._dr_index
+
+
+#class Writer(object):
+  #__slots__ = ('_ostream', '_packer')
+
+  #def __init__(self, ostream):
+    #if not hasattr(ostream, 'write'):
+        #raise TypeError('"ostream" must have a write attr')
+    #self._ostream = ostream
+    #self._packer = msgpack.Packer()
+
+  #def write_doc(self, doc):
+    #if not isinstance(doc, Doc):
+      #raise ValueError('You can only stream instances of Doc')
+
+    ## run along each of the Stores and update the _dr_index attributes
+    #for name, store in doc._dr_stores.iteritems():
+      #val = getattr(doc, name)
+      #if store.is_collection():
+        #for i, obj in enumerate(val):
+          #obj._dr_index = i
+      #elif val:
+        #val._dr_index = 0
+
+    ## find all of the types defined
+    #types = types_from_doc(doc)  # { klass : Type }
+    #doc_type = types[doc.__class__]
+
+    ## create a mapping from Store names and classes to Store objects
+    #sorted_dr_stores = sorted(doc._dr_stores.items(), key=lambda (k, v): k)
+    #stores = {}  # { klass : store_id } \cup { pyname : store_id }
+    #for i, (pyname, store) in enumerate(sorted_dr_stores):
+      #stores[pyname] = i
+      #if store._klass in stores:
+        #stores[store._klass].append(i)
+      #else:
+        #stores[store._klass] = [i]
+
+    ## construct the klasses header
+    #header = [None] * len(types)
+    #for klass, t in types.iteritems():
+      #fields = []
+      #for field in t.fields:
+        #f = field.copy()
+        #pointer_to = f.get(FIELD_TYPE_POINTER_TO)  # is a dr.Field instance
+        #if pointer_to is not None:
+          #if pointer_to.store:
+            #if pointer_to.store not in stores:
+              #raise StoreException('Store name {0!r} does not exist for field {1!r} of class {2}'.format(pointer_to.store, f[FIELD_TYPE_NAME], pointer_to._klass))
+            #store_id = stores[pointer_to.store]
+          #else:
+            #store_ids = stores.get(pointer_to._klass, [])
+            #if len(store_ids) == 1:
+              #store_id = store_ids[0]
+            #elif len(store_ids) == 0:
+              #raise StoreException('No Store was found for class {0} (for field {1!r})'.format(pointer_to._klass, f[FIELD_TYPE_NAME]))
+            #else:
+              #raise StoreException('The field {0!r} of class {1} needs to specify which Store it points to, as there are {2} potential Stores'.format(f[FIELD_TYPE_NAME], pointer_to._klass, len(store_ids)))
+          #f[FIELD_TYPE_POINTER_TO] = store_id
+        #fields.append(f)
+      #header[t.number] = (t.name(), fields)
+    #self._pack(header)
+
+    ## construct the stores header
+    #header = []
+    #for pyname, store in sorted_dr_stores:
+      #name = store.serial or pyname
+      #klass_id = types[store._klass].number
+      #nelem = 0 if not store.is_collection() else len(getattr(doc, pyname))
+      #header.append((name, klass_id, nelem))
+    #self._pack(header)
+
+    ## write out the document itself
+    #tmp = cStringIO.StringIO()
+    #self._pack(self._serialize(doc, doc_type), tmp)
+    #self._pack(len(tmp.getvalue()))
+    #self._ostream.write(tmp.getvalue())
+
+    ## write out each of the annotation sets
+    #for pyname, store in sorted_dr_stores:
+      #t = types[store._klass]
+      #tmp = cStringIO.StringIO()
+
+      #if store.is_collection():
+        #msg_objs = []
+        #for obj in getattr(doc, pyname):
+          #msg_objs.append(self._serialize(obj, t))
+        #self._pack(msg_objs, tmp)
+      #else:
+        #msg_obj = self._serialize(getattr(doc, pyname), t)
+        #self._pack(msg_obj, tmp)
+
+      #self._pack(len(tmp.getvalue()))
+      #self._ostream.write(tmp.getvalue())
+
+    #self._ostream.flush()
+
+  #def _pack(self, obj, out=None):
+    #if out is None:
+      #out = self._ostream
+    #out.write(self._packer.pack(obj))
+
+  #def _serialize(self, obj, t):
+    #"""
+    #Returns a Python object which represents the serialised form of object obj,
+    #which is of type t. The return value can be passed directly to the msgpack
+    #serialisation process -- it contains only values which msgpack can directly
+    #serialise.
+    #"""
+    #msg_obj = {}
+    #for pyname, field in obj._dr_fields.iteritems():
+      #val = getattr(obj, pyname)
+      #if hasattr(field, 'to_wire'):
+        #val = field.to_wire(val)
+      #if val is None:
+        #continue
+      #if isinstance(field, Pointer):
+        #if field.is_collection:
+          #val = map(swizzle_ptr, val)
+        #else:
+          #val = swizzle_ptr(val)
+      #elif isinstance(field, Slice):
+        #val = (val.start, val.stop)
+      #elif isinstance(val, unicode):
+        #val = val.encode('utf-8')
+      #msg_obj[t.pyname_to_index(pyname)] = val
+    #return msg_obj
