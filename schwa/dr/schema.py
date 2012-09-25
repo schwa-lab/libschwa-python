@@ -99,7 +99,7 @@ class DocSchema(BaseSchema):
     if not isinstance(store, StoreSchema):
       raise TypeError('argument must be a StoreSchema instance')
     self._stores[name] = store
-    if store.stored_type in self._stores_by_klass:
+    if store.stored_type.defn in self._stores_by_klass:
       self._stores_by_klass[store.stored_type.defn].append(store)
     else:
       self._stores_by_klass[store.stored_type.defn] = [store]
