@@ -3,12 +3,11 @@ from unittest import TestCase
 
 from schwa import dr
 
-from utils import write_x_read_y, write_read
+from utils import write_read
 
 
 class DocWithoutFields(dr.Doc):
-  class Meta:
-    name = 'test_fields.DocWithoutFields'
+  pass
 
 
 class FieldWithDefault(dr.Field):
@@ -21,9 +20,6 @@ class FieldWithDefault(dr.Field):
 class DocWithDefaultField(dr.Doc):
   field = FieldWithDefault()
 
-  class Meta:
-    name = 'test_fields.DocWithDefaultField'
-
 
 class FieldTests(TestCase):
   def test_default_field(self):
@@ -32,13 +28,13 @@ class FieldTests(TestCase):
 
   def test_default_field_from_wire(self):
     doc = DocWithoutFields()
-    doc = write_x_read_y(doc, DocWithDefaultField)
+    doc = write_read(doc, DocWithoutFields, DocWithDefaultField)
     self.assertEquals(doc.field, FieldWithDefault.DEFAULT_VALUE)
 
   def test_set_default_field_from_wire(self):
     doc = DocWithoutFields()
-    doc = write_x_read_y(doc, DocWithDefaultField)
+    doc = write_read(doc, DocWithoutFields, DocWithDefaultField)
     self.assertEquals(doc.field, FieldWithDefault.DEFAULT_VALUE)
     doc.field = 'value'
-    doc = write_read(doc)
+    doc = write_read(doc, DocWithDefaultField)
     self.assertEquals(doc.field, 'value')

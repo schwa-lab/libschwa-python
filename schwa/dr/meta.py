@@ -1,13 +1,14 @@
 # vim: set ts=2 et:
 import StringIO
 
+from .exceptions import DependencyException
 from .fields import BaseField, Store
 
 __all__ = ['Ann', 'Doc', 'MetaBase']
 
 
 class MetaBase(type):
-  registered = {}  # { _dr_name : klass }
+  _registered = {}  # { _dr_name : klass }
 
   def __new__(mklass, klass_name, bases, attrs):
     # construct the class
@@ -47,9 +48,9 @@ class MetaBase(type):
       klass._dr_help = ''
 
     # ensure _dr_name's are unique
-    if klass._dr_name in MetaBase.registered:
-      raise ValueError('The name {0!r} has already been registered by another class ({1})'.format(klass._dr_name, MetaBase.registered[klass._dr_name]))
-    MetaBase.registered[klass._dr_name] = klass
+    if klass._dr_name in MetaBase._registered:
+      raise ValueError('The name {0!r} has already been registered by another class ({1})'.format(klass._dr_name, MetaBase._registered[klass._dr_name]))
+    MetaBase._registered[klass._dr_name] = klass
 
     # construct the docstring for the class
     MetaBase.add_docstring(klass)
@@ -74,6 +75,19 @@ class MetaBase(type):
       doc.write('\n')
     if write_doc:
       klass.__doc__ = doc.getvalue()
+
+  @staticmethod
+  def find_klass(klass_name):
+    if klass_name not in MetaBase._registered:
+      suggestions = []
+      for name in MetaBase._registered:
+        if name.endswith('.' + klass_name):
+          suggestions.append(name)
+      suggestion = ''
+      if len(suggestions) == 1:
+        suggestion = ' Perhaps you meant {0!r} instead?'.format(suggestions[0])
+      raise DependencyException('klass_name {0!r} is not a registered Ann subclass name.{1}'.format(klass_name, suggestion))
+    return MetaBase._registered[klass_name]
 
 
 class Base(object):

@@ -116,10 +116,9 @@ class Writer(object):
     for f in rtschema.fields:
       if f.is_lazy():
         continue
-      rtfield = f.defn
-      field = rtfield.defn
+      field = f.defn.defn
       val = getattr(obj, f.defn.name)
-      val = field.to_wire(val, rtfield, store, doc)
+      val = field.to_wire(val, f, store, doc)
       if val is None:
         continue
       instance[f.field_id] = val

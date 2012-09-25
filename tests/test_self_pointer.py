@@ -1,8 +1,4 @@
 # vim: set ts=2 et:
-"""
-Tests that self-pointers don't throw the serialisation and deserialisation
-into an infinite recursion.
-"""
 import unittest
 
 from schwa import dr
@@ -12,17 +8,11 @@ from utils import write_read
 
 class Node(dr.Ann):
   label = dr.Field()
-  parent = dr.Pointer('test_self_pointer.Node')
-
-  class Meta:
-    name = 'test_self_pointer.Node'
+  parent = dr.SelfPointer()
 
 
 class Doc(dr.Doc):
   nodes = dr.Store(Node)
-
-  class Meta:
-    name = 'test_self_pointer.Doc'
 
 
 class TestDoc(unittest.TestCase):
@@ -46,7 +36,7 @@ class TestDoc(unittest.TestCase):
     self.assertIs(ne.parent, nc)
     self.assertIs(nf.parent, nc)
 
-    d = write_read(d)
+    d = write_read(d, Doc)
 
     self.assertEqual(len(d.nodes), 6)
     na, nb, nc, nd, ne, nf = d.nodes

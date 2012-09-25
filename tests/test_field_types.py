@@ -10,18 +10,12 @@ from utils import write_read
 
 class Event(dr.Ann):
   name = dr.Field()
-  date = dr.DateTimeField()
-
-  class Meta:
-    name = 'test_field_types.Event'
+  date = dr.DateTime()
 
 
 class String(dr.Ann):
-  utf8  = dr.EncodedStringField()
-  utf32 = dr.EncodedStringField('utf-32')
-
-  class Meta:
-    name = 'test_field_types.String'
+  utf8  = dr.Text()
+  utf32 = dr.Text('utf-32')
 
 
 class Doc(dr.Doc):
@@ -34,13 +28,15 @@ class Doc(dr.Doc):
 
 class TestDateTimeField(unittest.TestCase):
   def test_none_and_notnone(self):
+    schema = Doc.schema()
+
     doc1 = Doc()
     doc1.events.create(name='Some event', date=datetime.datetime(year=1990, month=12, day=2))
     doc1.events.create(name='Another event')
     self.assertIsNotNone(doc1.events[0].date)
     self.assertIsNone(doc1.events[1].date)
 
-    doc2 = write_read(doc1)
+    doc2 = write_read(doc1, schema)
     self.assertIsNotNone(doc2.events[0].date)
     self.assertIsNone(doc2.events[1].date)
     self.assertEqual(doc1.events[0].date, doc2.events[0].date)
@@ -48,6 +44,8 @@ class TestDateTimeField(unittest.TestCase):
 
 class TestEncodedStringField(unittest.TestCase):
   def test_none_and_notnone(self):
+    schema = Doc.schema()
+
     U = u'⁆foo'
     doc = Doc()
     doc.strings.create(utf8=U, utf32=U)
@@ -55,7 +53,7 @@ class TestEncodedStringField(unittest.TestCase):
     self.assertTrue(isinstance(doc.strings[0].utf8, unicode))
     self.assertTrue(isinstance(doc.strings[0].utf32, unicode))
 
-    doc = write_read(doc)
+    doc = write_read(doc, schema)
     self.assertEqual(len(doc.strings), 2)
     self.assertTrue(isinstance(doc.strings[0].utf8, unicode))
     self.assertTrue(isinstance(doc.strings[0].utf32, unicode))

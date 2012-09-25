@@ -159,6 +159,8 @@ class Reader(object):
         rtstore = RTStore(s, store_name, rt.klasses[klass_id], lazy=nelem)
       else:
         rtstore = RTStore(s, store_name, rt.klasses[klass_id], defn=defn)
+        store = getattr(self._doc, defn.name)
+        store.create_n(nelem)
       rt.doc.stores.append(rtstore)
 
       # ensure that the stream store and the static store agree on the klass they're storing
@@ -222,6 +224,6 @@ class Reader(object):
       else:
         rtschema = rtstore.klass
         store = getattr(self._doc, rtstore.defn.name)
-        for instance in instances:
-          obj = store.create()
+        for i, instance in enumerate(instances):
+          obj = store[i]
           self._process_instance(rtschema, instance, obj, store)

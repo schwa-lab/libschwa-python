@@ -1,6 +1,5 @@
 # vim: set ts=2 et:
 from .collections import StoreList
-from .exceptions import DependencyException
 
 __all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'SelfPointer', 'SelfPointers', 'Slice', 'Store']
 
@@ -16,7 +15,8 @@ def to_wire_pointer(obj, store):
     return None
   if not hasattr(obj, '_dr_index'):
     raise ValueError('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
-  assert store[obj._dr_index] is obj
+  if store[obj._dr_index] is not obj:
+    raise ValueError('Cannot serialize pointer to {0} not in store {1}'.format(obj, store))
   return obj._dr_index
 
 
@@ -33,7 +33,8 @@ def to_wire_pointers(objs, store):
   for obj in objs:
     if not hasattr(obj, '_dr_index'):
       raise ValueError('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
-    assert store[obj._dr_index] is obj
+    if store[obj._dr_index] is not obj:
+      raise ValueError('Cannot serialize pointer to {0} not in store {1}'.format(obj, store))
     indices.append(obj._dr_index)
   return indices
 
@@ -56,9 +57,7 @@ class BaseAttr(object):
   def resolve_klasses(self):
     if self._klass is None and self._klass_name is not None:
       from .meta import MetaBase
-      if self._klass_name not in MetaBase.registered:
-        raise DependencyException('klass_name {0!r} is not a registered Ann subclass name'.format(self._klass_name))
-      self._klass = MetaBase.registered[self._klass_name]
+      self._klass = MetaBase.find_klass(self._klass_name)
 
 
 # =============================================================================
@@ -245,5 +244,7 @@ class Store(BaseAttr):
       raise ValueError('Unknown first argument {0!r}.'.format(klass))
 
   def default(self):
+    if self._klass is None:
+      self.resolve_klasses()
     assert self._klass is not None
     return StoreList(self._klass)

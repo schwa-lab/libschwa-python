@@ -44,3 +44,8 @@ class StoreList(object):
     obj = self._klass(**kwargs)
     self.append(obj)
     return obj
+
+  def create_n(self, n, **kwargs):
+    for i in xrange(n):
+      obj = self._klass(**kwargs)
+      self.append(obj)
