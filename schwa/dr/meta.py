@@ -1,5 +1,6 @@
 # vim: set ts=2 et:
 import StringIO
+import types
 
 from .exceptions import DependencyException
 from .fields import BaseField, Store
@@ -14,6 +15,22 @@ class MetaBase(type):
     # construct the class
     klass = super(MetaBase, mklass).__new__(mklass, klass_name, bases, attrs)
 
+    # sanity check the base classes
+    is_here = has_ann_base = has_doc_base = False
+    for base in bases:
+      name = base.__module__ + '.' + base.__name__
+      if type(base) == types.TypeType or name == 'schwa.dr.meta.Base':
+        is_here = True
+      elif name == 'schwa.dr.meta.Ann':
+        has_ann_base = True
+      elif name == 'schwa.dr.meta.Doc':
+        has_doc_base = True
+    if not is_here:
+      if has_ann_base and has_doc_base:
+        raise ValueError('Class {0!r} cannot have both Ann and Doc as a base class'.format(klass_name))
+      elif not (has_ann_base or has_doc_base):
+        raise ValueError('Class {0!r} must have either Ann or Doc as a base class'.format(klass_name))
+
     # discover the Field and Store instances
     stores, fields = {}, {}
     for base in bases:
@@ -21,6 +38,9 @@ class MetaBase(type):
       fields.update(getattr(base, '_dr_fields', {}))
     for name, attr in attrs.iteritems():
       if isinstance(attr, Store):
+        # die if a Store is placed on an Ann
+        if has_ann_base:
+          raise ValueError('Class {0!r} cannot house a Store ({1!r}) as it is not a Doc subclass'.format(klass_name, name))
         stores[name] = attr
       elif isinstance(attr, BaseField):
         fields[name] = attr
