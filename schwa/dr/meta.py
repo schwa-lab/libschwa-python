@@ -3,7 +3,7 @@ import StringIO
 import types
 
 from .exceptions import DependencyException
-from .fields import BaseField, Store
+from .fields_core import BaseField, Store
 
 __all__ = ['Ann', 'Doc', 'MetaBase']
 

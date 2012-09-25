@@ -1,7 +1,7 @@
 # vim: set ts=2 et:
 import dateutil.parser
 
-from .fields import Field
+from .fields_core import Field
 
 __all__ = ['DateTime', 'Text']
 

@@ -2,8 +2,8 @@
 from .containers import StoreList
 from .decoration import Decorator, decorator, method_requires_decoration, requires_decoration
 from .exceptions import DependencyException, ReaderException
-from .fields import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice, Store
-from .field_types import DateTime, Text
+from .fields_core import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice, Store
+from .fields_extra import DateTime, Text
 from .meta import Ann, Doc
 from .reader import Reader
 from .writer import Writer

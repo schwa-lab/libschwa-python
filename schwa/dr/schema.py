@@ -2,7 +2,7 @@
 import inspect
 
 from .exceptions import DependencyException
-from .fields import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice
+from .fields_core import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice
 from .meta import Ann, Doc
 
 
