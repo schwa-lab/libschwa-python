@@ -134,7 +134,7 @@ class Writer(object):
         self._pack_prefixed(rtstore.lazy)
       else:
         rtschema = rtstore.klass
-        store = getattr(doc, rtstore.defn.nanme)
+        store = getattr(doc, rtstore.defn.name)
         instances = [self._build_instance(obj, store, doc, rtschema) for obj in store]
         self._pack_prefixed(instances)
 

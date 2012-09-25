@@ -3,15 +3,15 @@ import StringIO
 
 from .fields import BaseField, Store
 
-__all__ = ['Ann', 'Doc', 'Meta']
+__all__ = ['Ann', 'Doc', 'MetaBase']
 
 
-class Meta(type):
+class MetaBase(type):
   registered = {}  # { _dr_name : klass }
 
   def __new__(mklass, klass_name, bases, attrs):
     # construct the class
-    klass = super(Meta, mklass).__new__(mklass, klass_name, bases, attrs)
+    klass = super(MetaBase, mklass).__new__(mklass, klass_name, bases, attrs)
 
     # discover the Field and Store instances
     stores, fields = {}, {}
@@ -33,7 +33,10 @@ class Meta(type):
     if hasattr(meta, 'name'):
       klass._dr_name = meta.name
     else:
-      klass._dr_name = klass_name
+      module = ''
+      if '.' not in klass_name and klass.__module__ != '__main__':
+        module = klass.__module__ + '.'
+      klass._dr_name = module + klass_name
     if hasattr(meta, 'serial'):
       klass._dr_serial = meta.serial
     else:
@@ -44,12 +47,12 @@ class Meta(type):
       klass._dr_help = ''
 
     # ensure _dr_name's are unique
-    if klass._dr_name in Meta.registered:
-      raise ValueError('The name {0!r} has already been registered by another class ({1})'.format(klass._dr_name, Meta.registered[klass._dr_name]))
-    Meta.registered[klass._dr_name] = klass
+    if klass._dr_name in MetaBase.registered:
+      raise ValueError('The name {0!r} has already been registered by another class ({1})'.format(klass._dr_name, MetaBase.registered[klass._dr_name]))
+    MetaBase.registered[klass._dr_name] = klass
 
     # construct the docstring for the class
-    Meta.add_docstring(klass)
+    MetaBase.add_docstring(klass)
 
     return klass
 
@@ -74,7 +77,7 @@ class Meta(type):
 
 
 class Base(object):
-  __metaclass__ = Meta
+  __metaclass__ = MetaBase
 
   def __init__(self, **kwargs):
     for name, field in self._dr_fields.iteritems():
@@ -96,8 +99,7 @@ class Base(object):
 
 
 class Ann(Base):
-  class Meta:
-    name = 'schwa.dr.meta.Ann'
+  pass
 
 
 class Doc(Base):
@@ -118,6 +120,3 @@ class Doc(Base):
   def schema(klass):
     from .schema import create_schema
     return create_schema(klass)
-
-  class Meta:
-    name = 'schwa.dr.meta.Doc'

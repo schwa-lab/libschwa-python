@@ -55,10 +55,10 @@ class BaseAttr(object):
 
   def resolve_klasses(self):
     if self._klass is None and self._klass_name is not None:
-      from .meta import Meta
-      if self._klass_name not in Meta.registered:
+      from .meta import MetaBase
+      if self._klass_name not in MetaBase.registered:
         raise DependencyException('klass_name {0!r} is not a registered Ann subclass name'.format(self._klass_name))
-      self._klass = Meta.registered[self._klass_name]
+      self._klass = MetaBase.registered[self._klass_name]
 
 
 # =============================================================================

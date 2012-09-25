@@ -183,7 +183,7 @@ class Reader(object):
 
           # ensure the field points to a store of the same type as what the store actually is
           if not field.is_lazy():
-            field_type = field.defn.points_to
+            field_type = field.defn.points_to.stored_type
             store_type = rtstore.defn.stored_type
             if field_type != store_type:
               raise ReaderException('field points at {0} but store contains {1}'.format(field_type, store_type))

@@ -143,7 +143,7 @@ class FieldSchema(BaseSchema):
     self._is_pointer = is_pointer
     self._is_self_pointer = is_self_pointer
     self._is_slice = is_slice
-    self._points_to = points_to  # AnnSchema
+    self._points_to = points_to  # StoreSchema
     if is_pointer and points_to is None:
       raise ValueError('is_pointer requires points_to to point to an AnnSchema instance')
 
@@ -182,12 +182,12 @@ def _get_points_to(attr, field, s_doc, stored_klasses):
   if field.store is None:
     if s_doc.store_count_by_type(field._klass) != 1:
       raise DependencyException('The field {0!r} ({1}) points to class {2} without "store" being set. It is ambiguous not to specify which store.'.format(attr, field, field._klass))
-    points_to = s_doc.store_by_type(field._klass).stored_type
+    points_to = s_doc.store_by_type(field._klass)
   else:
     if not s_doc.has_store_by_name(field.store):
       raise DependencyException('The field {0!r} ({1}) has "store" set to {2!r} but this store is unknown.'.format(attr, field, field.store))
-    points_to = s_doc.store_by_name(field.store).stored_type
-    if points_to.defn != field._klass:
+    points_to = s_doc.store_by_name(field.store)
+    if points_to.stored_type.defn != field._klass:
       raise DependencyException('The field {0!r} ({1}) has "store" set to {2!r} but this store is of a different type.'.format(attr, field, field.store))
   return points_to
 
