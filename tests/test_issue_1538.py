@@ -1,6 +1,6 @@
 # vim: set ts=2 et:
 """
-Unit test for #
+Unit test for #1538
 http://schwa.org/issues/1538
 
 Writing a pointer to an object from the incorrect store should raise an exception.
