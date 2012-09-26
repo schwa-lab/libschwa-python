@@ -1,4 +1,5 @@
 # vim: set ts=2 et:
+import argparse
 import inspect
 
 from .exceptions import DependencyException
@@ -7,6 +8,23 @@ from .meta import Ann, Doc
 
 
 __all__ = ['AnnSchema', 'DocSchema', 'FieldSchema', 'StoreSchema', 'create_schema']
+
+
+class ArgparseAction(argparse.Action):
+  __slots__ = ('schema',)
+
+  def __init__(self, schema, *args, **kwargs):
+    argparse.Action.__init__(self, *args, **kwargs)
+    self.schema = schema
+
+  def __call__(self, parser, namespace, values, option_string=None):
+    self.schema.serial = values
+
+
+def argparse_action(self):
+  def fn(*args, **kwargs):
+    return ArgparseAction(self, *args, **kwargs)
+  return fn
 
 
 class BaseSchema(object):
@@ -29,6 +47,10 @@ class BaseSchema(object):
   @property
   def name(self):
     return self._name
+
+  def to_argparse(self, parser, prefix):
+    arg = prefix + '-' + self.name + '-serial'
+    parser.add_argument(arg, action=argparse_action(self), default=self.serial, help=self.help, metavar=self.serial)
 
 
 class AnnSchema(BaseSchema):
@@ -56,6 +78,13 @@ class AnnSchema(BaseSchema):
   def fields(self):
     return self._fields.itervalues()
 
+  def to_argparse(self, parser, prefix='-'):
+    pre = prefix + '-' + self.name
+    group = parser.add_argument_group(self.name, self.help)
+    group.add_argument(pre + '-serial', action=argparse_action(self), default=self.serial, metavar=self.serial)
+    for field in self.fields():
+      field.to_argparse(group, pre)
+
 
 class DocSchema(BaseSchema):
   __slots__ = ('_fields', '_stores', '_stores_by_klass', 'klasses')
@@ -69,7 +98,10 @@ class DocSchema(BaseSchema):
 
   def __contains__(self, arg):
     if inspect.isclass(arg) and issubclass(arg, Ann):
-      return arg in self._stores_by_klass
+      for klass in self.klasses:
+        if klass.defn == arg:
+          return True
+      return False
     elif isinstance(arg, (str, unicode)):
       return arg in self._fields or arg in self._stores
     else:
@@ -77,11 +109,10 @@ class DocSchema(BaseSchema):
 
   def __getitem__(self, arg):
     if inspect.isclass(arg) and issubclass(arg, Ann):
-      klasses = self._stores_by_klass[arg]
-      if len(klasses) == 1:
-        return klasses[0]
-      else:
-        raise ValueError('{0} stores were found of this type'.format(len(klasses)))
+      for klass in self.klasses:
+        if klass.defn == arg:
+          return klass
+      raise ValueError('Class {0} was not found'.format(arg))
     elif isinstance(arg, (str, unicode)):
       if arg in self.fields:
         return self._fields[arg]
@@ -133,6 +164,18 @@ class DocSchema(BaseSchema):
 
   def stores(self):
     return self._stores.itervalues()
+
+  def to_argparse(self, parser, prefix='-'):
+    pre = prefix + '-' + self.name
+    group = parser.add_argument_group(self.name, self.help)
+    group.add_argument(pre + '-serial', action=argparse_action(self), default=self.serial, metavar=self.serial)
+    for field in self.fields():
+      field.to_argparse(group, pre)
+    for store in self.stores():
+      store.to_argparse(group, pre)
+
+    for schema in self.klasses:
+      schema.to_argparse(parser, prefix)
 
 
 class FieldSchema(BaseSchema):
