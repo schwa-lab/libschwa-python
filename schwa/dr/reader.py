@@ -17,7 +17,7 @@ class Reader(object):
 
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
-  def __init__(self, arg):
+  def __init__(self, istream, arg):
     if isinstance(arg, DocSchema):
       self._doc_schema = arg
     elif inspect.isclass(arg) and issubclass(arg, Doc):
@@ -25,7 +25,7 @@ class Reader(object):
     else:
       raise TypeError('Invalid value for arg. Must be either a DocSchema instance or a Doc subclass')
     self._doc = None
-    self._unpacker = None
+    self._unpacker = msgpack.Unpacker(istream)
 
   def __iter__(self):
     return self
@@ -35,10 +35,6 @@ class Reader(object):
     if self._doc is None:
       raise StopIteration()
     return self._doc
-
-  def stream(self, istream):
-    self._unpacker = msgpack.Unpacker(istream)
-    return self
 
   def _read_doc(self):
     # read in the version number

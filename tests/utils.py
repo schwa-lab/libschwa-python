@@ -12,4 +12,4 @@ def write_read(doc, out_schema, in_schema=None):
   dr.Writer(f, out_schema).write(doc)
   f.seek(0)
   print 'Reading {0}'.format(in_schema)
-  return dr.Reader(in_schema).stream(f).next()
+  return dr.Reader(f, in_schema).next()
