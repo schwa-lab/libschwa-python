@@ -48,8 +48,8 @@ class SliceDecoratorsTest(TestCase):
     self.doc.slices.create(span=slice(1, 4), name='Long slice')
     self.doc.slices.create(span=slice(5, 6), name='Unit slice')
 
-  def test_materialise_slices(self):
-    decorate = dr.decorators.materialise_slices('slices', 'annots', 'span', 'annots')
+  def test_materialize_slices(self):
+    decorate = dr.decorators.materialize_slices('slices', 'annots', 'span', 'annots')
 
     def assert_clean():
       for sl in self.doc.slices:
@@ -606,7 +606,7 @@ class ApplicationsTest(TestCase):
     self.assertSetEqual(set(repr(x) for x in (slice(0, 11), slice(34, 41))), set(repr(ent.char_span) for ent in doc.entities_by_type['PER']))
 
     # traverse tokens in context around entity
-    dr.decorators.materialise_slices('entities', 'tokens', 'token_span', 'tokens')(doc)
+    dr.decorators.materialize_slices('entities', 'tokens', 'token_span', 'tokens')(doc)
     dr.decorators.add_prev_next('tokens', 'prev', 'next')(doc)
     self.assertEqual([('preferred', 'minister')], [(entity.tokens[0].prev.norm, entity.tokens[-1].next.norm) for entity in doc.entities_by_type['PER_DESC']])
 
