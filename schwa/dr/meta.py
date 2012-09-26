@@ -1,7 +1,7 @@
 # vim: set ts=2 et:
 import StringIO
-import types
 
+from .containers import StoreList
 from .exceptions import DependencyException
 from .fields_core import BaseField, Store
 
@@ -12,19 +12,17 @@ class MetaBase(type):
   _registered = {}  # { _dr_name : klass }
 
   def __new__(mklass, klass_name, bases, attrs):
-    # construct the class
-    klass = super(MetaBase, mklass).__new__(mklass, klass_name, bases, attrs)
-
     # sanity check the base classes
     is_here = has_ann_base = has_doc_base = False
     for base in bases:
-      name = base.__module__ + '.' + base.__name__
-      if type(base) == types.TypeType or name == 'schwa.dr.meta.Base':
+      if attrs['__module__'] == MetaBase.__module__:
         is_here = True
-      elif name == 'schwa.dr.meta.Ann':
-        has_ann_base = True
-      elif name == 'schwa.dr.meta.Doc':
-        has_doc_base = True
+      else:
+        #from . import Ann, Doc
+        if issubclass(base, Ann):
+          has_ann_base = True
+        elif issubclass(base, Doc):
+          has_doc_base = True
     if not is_here:
       if has_ann_base and has_doc_base:
         raise ValueError('Class {0!r} cannot have both Ann and Doc as a base class'.format(klass_name))
@@ -32,10 +30,10 @@ class MetaBase(type):
         raise ValueError('Class {0!r} must have either Ann or Doc as a base class'.format(klass_name))
 
     # discover the Field and Store instances
-    stores, fields = {}, {}
+    fields, stores = {}, {}
     for base in bases:
-      stores.update(getattr(base, '_dr_stores', {}))
       fields.update(getattr(base, '_dr_fields', {}))
+      stores.update(getattr(base, '_dr_stores', {}))
     for name, attr in attrs.iteritems():
       if isinstance(attr, Store):
         # die if a Store is placed on an Ann
@@ -44,6 +42,21 @@ class MetaBase(type):
         stores[name] = attr
       elif isinstance(attr, BaseField):
         fields[name] = attr
+
+    # construct __slots__
+    if not is_here:
+      if '__slots__' in attrs:
+        slots = list(attrs['__slots__']) + list(fields) + list(stores)
+        attrs['__slots__'] = tuple(slots)
+
+      # remove the Store and BaseField objects from the set of class attributes so that they can be overwritten by instances of the class
+      for key in fields:
+        del attrs[key]
+      for key in stores:
+        del attrs[key]
+
+    # construct the class
+    klass = super(MetaBase, mklass).__new__(mklass, klass_name, bases, attrs)
 
     # adds the Field and Store information appropriately
     klass._dr_fields = fields  # { attr : Field }
@@ -112,12 +125,15 @@ class MetaBase(type):
 
 class Base(object):
   __metaclass__ = MetaBase
+  __slots__ = ('_dr_decorated_by', '_dr_lazy')
 
   def __init__(self, **kwargs):
     for name, field in self._dr_fields.iteritems():
-      self.__dict__[name] = field.default()
+      setattr(self, name, field.default())
+      #self.__dict__[name] = field.default()
     for name, store in self._dr_stores.iteritems():
-      self.__dict__[name] = store.default()
+      setattr(self, name, store.default())
+      #self.__dict__[name] = store.default()
     self._dr_lazy = None
 
     for k, v in kwargs.iteritems():
@@ -133,22 +149,24 @@ class Base(object):
 
 
 class Ann(Base):
-  pass
+  __slots__ = ('_dr_index', )
+
+  def __init__(self, **kwargs):
+    super(Ann, self).__init__(**kwargs)
+    self._dr_index = None
 
 
 class Doc(Base):
+  __slots__ = ('_dr_rt', )
+
   def __init__(self, **kwargs):
     super(Doc, self).__init__(**kwargs)
     self._dr_rt = None
 
   def __setattr__(self, attr, value):
-    if attr in self._dr_stores:
-      raise ValueError('Cannot overwrite a store ({0})'.format(attr))
+    if attr in self._dr_stores and not isinstance(value, StoreList):
+      raise ValueError('Cannot overwrite a store ({0}) with a value that is not a StoreList'.format(attr))
     super(Doc, self).__setattr__(attr, value)
-
-  def ready(self):
-    """Hook called after a Document and all its Stores are loaded."""
-    pass
 
   @classmethod
   def schema(klass):

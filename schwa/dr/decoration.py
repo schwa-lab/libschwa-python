@@ -15,12 +15,12 @@ def decorator(key=None):
   def dec(fn):
     @wraps(fn)
     def wrapper(doc, check=True, mark=True):
-      if not hasattr(doc, '_decorated_by'):
-        doc._decorated_by = {}
-      if check and key in doc._decorated_by:
+      if not hasattr(doc, '_dr_decorated_by'):
+        doc._dr_decorated_by = {}
+      if check and key in doc._dr_decorated_by:
         return
       if mark:
-        doc._decorated_by[key] = wrapper
+        doc._dr_decorated_by[key] = wrapper
       fn(doc)
     wrapper.reapply = partial(wrapper, check=False)
     return wrapper
@@ -100,7 +100,7 @@ class Decorator(object):
 
     if unmark:
       try:
-        del doc._decorated_by[self._key]
+        del doc._dr_decorated_by[self._key]
       except KeyError:
         pass
 

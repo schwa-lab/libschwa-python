@@ -60,9 +60,6 @@ class Reader(object):
     self._read_doc_instance()
     self._read_instances()
 
-    # call post-reading hook
-    self._doc.ready()
-
   def _read_klasses(self):
     # read <klasses> ::= [ <klass> ]
     #        <klass> ::= ( <klass_name>, <fields> )
