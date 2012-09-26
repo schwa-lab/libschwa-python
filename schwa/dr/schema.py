@@ -48,7 +48,7 @@ class BaseSchema(object):
   def name(self):
     return self._name
 
-  def to_argparse(self, parser, prefix):
+  def add_to_argparse(self, parser, prefix):
     arg = prefix + '-' + self.name + '-serial'
     parser.add_argument(arg, action=argparse_action(self), default=self.serial, help=self.help, metavar=self.serial)
 
@@ -78,12 +78,12 @@ class AnnSchema(BaseSchema):
   def fields(self):
     return self._fields.itervalues()
 
-  def to_argparse(self, parser, prefix='-'):
+  def add_to_argparse(self, parser, prefix='-'):
     pre = prefix + '-' + self.name
     group = parser.add_argument_group(self.name, self.help)
     group.add_argument(pre + '-serial', action=argparse_action(self), default=self.serial, metavar=self.serial)
     for field in self.fields():
-      field.to_argparse(group, pre)
+      field.add_to_argparse(group, pre)
 
 
 class DocSchema(BaseSchema):
@@ -165,17 +165,17 @@ class DocSchema(BaseSchema):
   def stores(self):
     return self._stores.itervalues()
 
-  def to_argparse(self, parser, prefix='-'):
+  def add_to_argparse(self, parser, prefix='-'):
     pre = prefix + '-' + self.name
     group = parser.add_argument_group(self.name, self.help)
     group.add_argument(pre + '-serial', action=argparse_action(self), default=self.serial, metavar=self.serial)
     for field in self.fields():
-      field.to_argparse(group, pre)
+      field.add_to_argparse(group, pre)
     for store in self.stores():
-      store.to_argparse(group, pre)
+      store.add_to_argparse(group, pre)
 
     for schema in self.klasses:
-      schema.to_argparse(parser, prefix)
+      schema.add_to_argparse(parser, prefix)
 
 
 class FieldSchema(BaseSchema):
