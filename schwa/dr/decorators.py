@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from collections import defaultdict
 from functools import partial
+import operator
 from operator import attrgetter
 import itertools
 from types import StringTypes, TupleType
@@ -15,6 +16,7 @@ def _attrsetter(attr):
   else:
     def fn(obj, val):
       setattr(obj, attr, val)
+      return val
 
   # Set a default value like any other value
   fn.default = fn
@@ -32,6 +34,7 @@ def _attrappender(attr):
       getattr(obj, attr).append(val)
     except AttributeError:
       setattr(obj, attr, [val])
+    return getattr(obj, attr)
 
   # Do not set a default value, just initialise the list
   def default_fn(obj, val):
@@ -57,6 +60,41 @@ def _storegetter(store):
   else:
     return attrgetter(store)
 
+def _aggregator(mode, attr):
+  if mode is None or mode is 'last':
+    return _attrsetter(attr)
+  elif mode is 'first':
+    def fn(obj, val):
+      try:
+        return getattr(obj, attr)
+      except AttributeError:
+        pass
+      setattr(obj, attr, val)
+      return val
+    return fn
+  elif mode is 'append':
+    return _attrappender(attr)
+  elif mode is 'min':
+    fn = min
+    default = float('inf')
+  elif mode is 'max':
+    fn = max
+    default = float('-inf')
+  elif mode is 'add':
+    fn = operator.add
+    default = 0
+  elif mode is 'mul':
+    fn = operator.mul
+    default = 1
+  else:
+    raise ValueError('Unknown aggregate type {0}'.format(mode))
+
+  def agg(obj, val):
+    prev = getattr(obj, attr, default)
+    val = fn(prev, val)
+    setattr(obj, attr, val)
+    return val
+  return agg
 
 class add_prev_next(Decorator):
   """
@@ -320,3 +358,44 @@ class reverse_pointers(Decorator):
           self.set_rev(target_item, source)
       else:
         self.set_rev(target, source)
+
+class mark_depth(Decorator):
+  """
+  In a graph structure, mark the depth and height of each node, counted from root and leaf, respectively.
+
+  Arguments:
+  - store: the store of nodes on which depth and height attrs are set (required for undo)
+  - get_starts: a function or attribute on the doc that returns the starting nodes for a depth-first search
+  - child_attr: a function or attribute for traversing from one node to its immediate descendants
+  - depth_attr: the attribute to set on each node indicating its distance from a start node
+  - height_attr: the attribute to set on each node indicating its distance from an end node (one without children)
+  - depth_aggregate: one of ('last', 'min', 'max'). 'last' adopts the last value in right traversal.
+  
+  """
+  def __init__(self, store, get_starts, child_attr, depth_attr=None, height_attr=None, depth_aggregate=None, height_aggregate='max', max_depth=None):
+    super(mark_depth, self).__init__(self._build_key(get_starts, child_attr, depth_attr, height_attr, depth_aggregate, height_aggregate, max_depth))
+    self.get_starts = _storegetter(get_starts)
+    self.get_children = _attrgetter(child_attr)
+    self.set_depth = _aggregator(depth_aggregate, depth_attr)
+    self.set_height = _aggregator(height_aggregate, height_attr)
+    self.max_depth = max_depth
+    self._set_affected_fields((store, depth_attr), (store, height_attr))
+
+  def decorate(self, doc):
+    for obj in self.get_starts(doc):
+      self._decorate(obj, 0)
+
+  def _decorate(self, obj, depth):
+    self.set_depth(obj, depth)
+    children = self.get_children(obj)
+    if not children or depth == self.max_depth:
+      return self.set_height(obj, 0)
+    if not isinstance(children, (list, tuple)):
+      children = [children]
+    for child in children:
+      ch_height = self._decorate(child, depth + 1)
+      print 'Setting height ', obj.field, 'via', child.field, ':', ch_height + 1
+      height = self.set_height(obj, ch_height + 1)
+    return height
+
+# Get min-height can be done more efficiently with breadth-first search

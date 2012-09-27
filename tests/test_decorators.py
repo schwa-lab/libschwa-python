@@ -328,6 +328,83 @@ class PointerDecoratorTest(TestCase):
     self.test_reverse_overlapping_pointers(True)
 
 
+class GraphDecoratorTest(TestCase):
+
+  def setUp(self):
+    #     A     F
+    #    / \    |
+    #   B   C   G
+    #  / \    
+    # D   E    
+    self.doc = Document()
+
+    annots = self.doc.annots
+    for i in range(7):
+      label = chr(ord('A') + i)
+      annots.create(field=label)
+
+    A, B, C, D, E, F, G = range(7)
+    annots[A].children = [annots[B], annots[C]]
+    annots[B].children = [annots[D], annots[E]]
+    annots[F].children = [annots[G]]
+    self.doc.root_annots = [annots[A], annots[F]]
+    self.doc.leaf_annots = [annots[D], annots[E], annots[C], annots[G]]
+
+  def _test(self, decorate, height_aggregate):
+    def assert_clean():
+      for a in self.doc.annots:
+        self.assertFalse(hasattr(a, 'depth'))
+        self.assertFalse(hasattr(a, 'height'))
+
+    assert_clean()
+    decorate(self.doc)
+
+    EXPECTED = {
+      'A': (0, 2 if height_aggregate == 'max' else 1),
+      'B': (1, 1),
+      'C': (1, 0),
+      'D': (2, 0),
+      'E': (2, 0),
+      'E': (2, 0),
+      'F': (0, 1),
+      'G': (1, 0),
+    }
+
+    for a in self.doc.annots:
+      print a.field, a.height, height_aggregate
+      exp_depth, exp_height = EXPECTED[a.field]
+      self.assertEqual(exp_depth, a.depth)
+      self.assertEqual(exp_height, a.height)
+
+    decorate.undo(self.doc)
+    assert_clean()
+
+  def test_multiple_descent(self, height_aggregate='last'):
+    """Multiple children, one parent"""
+    decorate = dr.decorators.mark_depth('annots', 'root_annots', 'children', 'depth', 'height', height_aggregate=height_aggregate)
+    self._test(decorate, height_aggregate)
+
+  def test_multiple_descent_min_height(self):
+    self.test_multiple_descent('min')
+
+  def test_multiple_descent_max_height(self):
+    self.test_multiple_descent('max')
+
+  def test_single_ascent(self, height_aggregate='last'):
+    dr.decorators.reverse_pointers('annots', 'annots', 'children', 'parent', mutex=True, mark_outside=True)(self.doc)
+    # Note switched depth and height in ascent
+    decorate = dr.decorators.mark_depth('annots', 'leaf_annots', 'parent', 'height', 'depth', depth_aggregate=height_aggregate)
+    self._test(decorate, height_aggregate)
+
+  def test_single_ascent_min_height(self):
+    self.test_single_ascent('min')
+
+  def test_single_ascent_max_height(self):
+    self.test_single_ascent('max')
+
+  # TODO: test max_depth
+
+
 class PrevNextIndexTest(TestCase):
   def setUp(self):
     self.doc = Document()
