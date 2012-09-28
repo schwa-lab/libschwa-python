@@ -4,6 +4,7 @@ import inspect
 import msgpack
 
 from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
+from .exceptions import WriterException
 from .runtime import build_rt, merge_rt
 from .meta import Doc
 from .schema import DocSchema
@@ -38,6 +39,9 @@ class Writer(object):
     else:
       rt = doc._dr_rt = merge_rt(doc._dr_rt, self._doc_schema)
 
+    # update the _dr_index values
+    self._index_stores(doc, rt)
+
     # write wire version
     self._pack(Writer.WIRE_VERSION)
 
@@ -57,6 +61,16 @@ class Writer(object):
     packed = self._packer.pack(value)
     self._pack(len(packed))
     self._ostream.write(packed)
+
+  def _index_stores(self, doc, rt):
+    """Set _dr_index on each of the objects in the stores."""
+    for s in rt.doc.stores:
+      if not s.is_lazy():
+        store = getattr(doc, s.defn.name)
+        for i, obj in enumerate(store):
+          if obj is None:
+            raise WriterException('Index {0} on store {1} is None'.format(i, s.defn))
+          obj._dr_index = i
 
   def _build_klasses(self, doc, rt):
     # <klasses> ::= [ <klass> ]

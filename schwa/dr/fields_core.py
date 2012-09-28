@@ -1,5 +1,6 @@
 # vim: set ts=2 et:
 from .containers import StoreList
+from .exceptions import WriterException
 
 __all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'SelfPointer', 'SelfPointers', 'Slice', 'Store']
 
@@ -14,9 +15,11 @@ def to_wire_pointer(obj, store):
   if obj is None:
     return None
   if not hasattr(obj, '_dr_index'):
-    raise ValueError('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
+    raise WriterException('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
+  if obj._dr_index is None:
+    raise WriterException('Cannot serialize pointer to {0} as it is not not in any store'.format(obj))
   if store[obj._dr_index] is not obj:
-    raise ValueError('Cannot serialize pointer to {0} not in store {1}'.format(obj, store))
+    raise WriterException('Cannot serialize pointer to {0} not in store {1}'.format(obj, store))
   return obj._dr_index
 
 
@@ -32,9 +35,11 @@ def to_wire_pointers(objs, store):
   indices = []
   for obj in objs:
     if not hasattr(obj, '_dr_index'):
-      raise ValueError('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
+      raise WriterException('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
+    if obj._dr_index is None:
+      raise WriterException('Cannot serialize pointer to {0} as it is not not in any store'.format(obj))
     if store[obj._dr_index] is not obj:
-      raise ValueError('Cannot serialize pointer to {0} not in store {1}'.format(obj, store))
+      raise WriterException('Cannot serialize pointer to {0} not in store {1}'.format(obj, store))
     indices.append(obj._dr_index)
   return indices
 

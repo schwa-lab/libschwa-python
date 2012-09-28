@@ -2,43 +2,16 @@
 __all__ = ['StoreList']
 
 
-class StoreList(object):
-  __slots__ = ('_items', '_klass')
+class StoreList(list):
+  __slots__ = ('_klass', )
 
-  def __init__(self, klass):
-    self._items = []
+  def __init__(self, klass, *args, **kwargs):
+    super(StoreList, self).__init__(*args, **kwargs)
     self._klass = klass
 
-  def __iadd__(self, other):
-    for obj in other:
-      self.append(obj)
-    return self
-
-  def __getitem__(self, index):
-    return self._items[index]
-
-  def __iter__(self):
-    return iter(self._items)
-
-  def __len__(self):
-    return len(self._items)
-
   def __repr__(self):
-    return 'StoreList({0!r})'.format(self._items)
-
-  def __str__(self):
-    return str(self._items)
-
-  def append(self, item):
-    item._dr_index = len(self._items)
-    self._items.append(item)
-
-  def clear(self):
-    del self._items
-    self._items = []
-
-  def index(self, item):
-    return self._items.index(item)
+    r = super(StoreList, self).__repr__()
+    return 'StoreList({0})'.format(r)
 
   def create(self, **kwargs):
     obj = self._klass(**kwargs)

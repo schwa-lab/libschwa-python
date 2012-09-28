@@ -8,6 +8,7 @@ Writing a pointer to an object from the incorrect store should raise an exceptio
 import unittest
 
 from schwa import dr
+from schwa.dr.exceptions import WriterException
 
 from utils import write_read
 
@@ -39,10 +40,10 @@ class Issue1538Test(unittest.TestCase):
 
   def test_different_type(self):
     self.doc.favourite = self.doc.bars[2]
-    with self.assertRaisesRegexp(ValueError, self.WRONG_STORE_MSG):
+    with self.assertRaisesRegexp(WriterException, self.WRONG_STORE_MSG):
       write_read(self.doc, Doc)
 
   def test_same_type(self):
     self.doc.favourite = self.doc.wrong_foos[2]
-    with self.assertRaisesRegexp(ValueError, self.WRONG_STORE_MSG):
+    with self.assertRaisesRegexp(WriterException, self.WRONG_STORE_MSG):
       write_read(self.doc, Doc)
