@@ -17,19 +17,31 @@ class Writer(object):
 
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
-  def __init__(self, ostream, arg):
+  def __init__(self, ostream, doc_schema_or_doc):
+    """
+    @param ostream A file-like object to write to
+    @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
+    """
     if not hasattr(ostream, 'write'):
       raise TypeError('ostream must have a write attr')
     self._ostream = ostream
-    if isinstance(arg, DocSchema):
-      self._doc_schema = arg
-    elif inspect.isclass(arg) and issubclass(arg, Doc):
-      self._doc_schema = arg.schema()
+    if isinstance(doc_schema_or_doc, DocSchema):
+      self._doc_schema = doc_schema_or_doc
+    elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
+      self._doc_schema = doc_schema_or_doc.schema()
     else:
-      raise TypeError('Invalid value for arg. Must be either a DocSchema instance or a Doc subclass')
+      raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
     self._packer = msgpack.Packer()
 
+  def doc_schema(self):
+    """Returns the DocSchema instance used/created during the writing process."""
+    return self._doc_schema
+
   def write(self, doc):
+    """
+    Writes a Doc instance to the stream.
+    @param doc the Doc instance to write to the stream.
+    """
     if not isinstance(doc, Doc):
       raise ValueError('You can only stream instances of Doc')
 

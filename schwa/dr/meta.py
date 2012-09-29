@@ -175,6 +175,13 @@ class Doc(Base):
 
 
 def make_ann(name, *named_fields, **defined_fields):
+  """
+  A collections.namedtuple sister function for creating Ann subclasses.
+  @param name The name of the Ann subclass
+  @param named_fields The string names of the Field's to add to the class
+  @oaran defined_fields Name, field object pairs for fields you want to add to the class that are not of type Field
+  @return The created class object
+  """
   from .fields_core import Field
   attrs = dict(defined_fields)
   for field in named_fields:

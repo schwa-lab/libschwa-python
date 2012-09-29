@@ -5,13 +5,13 @@ from .exceptions import WriterException
 __all__ = ['BaseAttr', 'BaseField', 'Field', 'Pointer', 'Pointers', 'SelfPointer', 'SelfPointers', 'Slice', 'Store']
 
 
-def from_wire_pointer(val, store):
+def _from_wire_pointer(val, store):
   if val is None:
     return None
   return store[val]
 
 
-def to_wire_pointer(obj, store):
+def _to_wire_pointer(obj, store):
   if obj is None:
     return None
   if not hasattr(obj, '_dr_index'):
@@ -23,13 +23,13 @@ def to_wire_pointer(obj, store):
   return obj._dr_index
 
 
-def from_wire_pointers(vals, store):
+def _from_wire_pointers(vals, store):
   if not vals:
     return None
   return [store[i] for i in vals]
 
 
-def to_wire_pointers(objs, store):
+def _to_wire_pointers(objs, store):
   if not objs:
     return None
   indices = []
@@ -131,10 +131,10 @@ class Pointer(BaseField):
     return None
 
   def from_wire(self, val, rtfield, cur_store, doc):
-    return from_wire_pointer(val, getattr(doc, rtfield.points_to.defn.name))
+    return _from_wire_pointer(val, getattr(doc, rtfield.points_to.defn.name))
 
   def to_wire(self, obj, rtfield, cur_store, doc):
-    return to_wire_pointer(obj, getattr(doc, rtfield.points_to.defn.name))
+    return _to_wire_pointer(obj, getattr(doc, rtfield.points_to.defn.name))
 
 
 class Pointers(Pointer):
@@ -146,10 +146,10 @@ class Pointers(Pointer):
     return []
 
   def from_wire(self, vals, rtfield, cur_store, doc):
-    return from_wire_pointers(vals, getattr(doc, rtfield.points_to.defn.name))
+    return _from_wire_pointers(vals, getattr(doc, rtfield.points_to.defn.name))
 
   def to_wire(self, objs, rtfield, cur_store, doc):
-    return to_wire_pointers(objs, getattr(doc, rtfield.points_to.defn.name))
+    return _to_wire_pointers(objs, getattr(doc, rtfield.points_to.defn.name))
 
 
 class SelfPointer(BaseField):
@@ -166,10 +166,10 @@ class SelfPointer(BaseField):
     pass
 
   def from_wire(self, val, rtfield, cur_store, doc):
-    return from_wire_pointer(val, cur_store)
+    return _from_wire_pointer(val, cur_store)
 
   def to_wire(self, obj, rtfield, cur_store, doc):
-    return to_wire_pointer(obj, cur_store)
+    return _to_wire_pointer(obj, cur_store)
 
 
 class SelfPointers(SelfPointer):
@@ -181,10 +181,10 @@ class SelfPointers(SelfPointer):
     return []
 
   def from_wire(self, vals, rtfield, cur_store, doc):
-    return from_wire_pointers(vals, cur_store)
+    return _from_wire_pointers(vals, cur_store)
 
   def to_wire(self, objs, rtfield, cur_store, doc):
-    return to_wire_pointers(objs, cur_store)
+    return _to_wire_pointers(objs, cur_store)
 
 
 class Slice(BaseField):

@@ -19,27 +19,33 @@ class Reader(object):
 
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
-  def __init__(self, istream, arg=None, automagic=False):
-    if arg is None:
+  def __init__(self, istream, doc_schema_or_doc=None, automagic=False):
+    """
+    @param istream A file-like object to read from
+    @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
+    @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
+    """
+    if doc_schema_or_doc is None:
       if not automagic:
-        raise ValueError('arg can only be None if automagic is True')
+        raise ValueError('doc_schema_or_doc can only be None if automagic is True')
       self._doc_schema = None
-    elif isinstance(arg, DocSchema):
-      self._doc_schema = arg
-    elif inspect.isclass(arg) and issubclass(arg, Doc):
-      self._doc_schema = arg.schema()
+    elif isinstance(doc_schema_or_doc, DocSchema):
+      self._doc_schema = doc_schema_or_doc
+    elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
+      self._doc_schema = doc_schema_or_doc.schema()
     else:
-      raise TypeError('Invalid value for arg. Must be either a DocSchema instance or a Doc subclass')
+      raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
     self._doc = None
     self._unpacker = msgpack.Unpacker(istream)
     self._automagic = automagic
     self._automagic_count = 0
 
+  def doc_schema(self):
+    """Returns the DocSchema instance used/created during the reading process."""
+    return self._doc_schema
+
   def __iter__(self):
     return self
-
-  def doc_schema(self):
-    return self._doc_schema
 
   def next(self):
     self._read_doc()
