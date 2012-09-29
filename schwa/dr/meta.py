@@ -5,7 +5,7 @@ from .containers import StoreList
 from .exceptions import DependencyException
 from .fields_core import BaseField, Store
 
-__all__ = ['Ann', 'Doc', 'MetaBase']
+__all__ = ['Ann', 'Doc', 'MetaBase', 'make_ann']
 
 
 class MetaBase(type):
@@ -15,7 +15,7 @@ class MetaBase(type):
     # sanity check the base classes
     is_here = has_ann_base = has_doc_base = False
     for base in bases:
-      if attrs['__module__'] == MetaBase.__module__:
+      if attrs.get('__module__') == MetaBase.__module__:
         is_here = True
       else:
         #from . import Ann, Doc
@@ -172,3 +172,11 @@ class Doc(Base):
   def schema(klass):
     from .schema import create_schema
     return create_schema(klass)
+
+
+def make_ann(name, *named_fields, **defined_fields):
+  from .fields_core import Field
+  attrs = dict(defined_fields)
+  for field in named_fields:
+    attrs[field] = Field()
+  return MetaBase(name, (Ann, ), attrs)
