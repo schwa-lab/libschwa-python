@@ -5,20 +5,26 @@ import msgpack
 
 from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
 from .exceptions import ReaderException
+from .fields_core import Field, Pointer, SelfPointer, Slice, Store
+from .rtklasses import get_or_create_klass
 from .runtime import RTField, RTStore, RTAnn, RTManager
 from .meta import Doc
-from .schema import DocSchema
+from .schema import AnnSchema, DocSchema, FieldSchema, StoreSchema
 
 __all__ = ['Reader']
 
 
 class Reader(object):
-  __slots__ = ('_doc', '_doc_schema', '_unpacker')
+  __slots__ = ('_automagic', '_automagic_count', '_doc', '_doc_schema', '_unpacker')
 
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
-  def __init__(self, istream, arg):
-    if isinstance(arg, DocSchema):
+  def __init__(self, istream, arg=None, automagic=False):
+    if arg is None:
+      if not automagic:
+        raise ValueError('arg can only be None if automagic is True')
+      self._doc_schema = None
+    elif isinstance(arg, DocSchema):
       self._doc_schema = arg
     elif inspect.isclass(arg) and issubclass(arg, Doc):
       self._doc_schema = arg.schema()
@@ -26,9 +32,14 @@ class Reader(object):
       raise TypeError('Invalid value for arg. Must be either a DocSchema instance or a Doc subclass')
     self._doc = None
     self._unpacker = msgpack.Unpacker(istream)
+    self._automagic = automagic
+    self._automagic_count = 0
 
   def __iter__(self):
     return self
+
+  def doc_schema(self):
+    return self._doc_schema
 
   def next(self):
     self._read_doc()
@@ -48,6 +59,9 @@ class Reader(object):
       raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, Reader.WIRE_VERSION))
 
     # create the Doc instance and RTManager
+    if self._doc_schema is None and self._automagic:
+      doc_klass = get_or_create_klass(self._automagic_count, 'Doc', is_doc=True)
+      self._doc_schema = doc_klass.schema()
     doc = self._doc = self._doc_schema.defn()
     doc._dr_rt = RTManager()
 
@@ -55,10 +69,16 @@ class Reader(object):
     self._read_klasses()
     self._read_stores()
     self._backfill_pointer_fields()
+    if self._automagic:
+      self._do_automagic()
 
     # read instances
     self._read_doc_instance()
     self._read_instances()
+
+    # increment automagic counter if used
+    if self._automagic:
+      self._automagic_count += 1
 
   def _read_klasses(self):
     # read <klasses> ::= [ <klass> ]
@@ -67,11 +87,11 @@ class Reader(object):
     read = self._unpacker.unpack()
     for k, (klass_name, fields) in enumerate(read):
       # construct the RTAnn instance for the class
-      ann_schema = self._doc_schema.klass_by_serial(klass_name)
       if klass_name == '__meta__':
         rtschema = RTAnn(k, klass_name, self._doc_schema)
         rt.doc = rtschema
       else:
+        ann_schema = self._doc_schema.klass_by_serial(klass_name)
         rtschema = RTAnn(k, klass_name, ann_schema)
       rt.klasses.append(rtschema)
 
@@ -88,11 +108,11 @@ class Reader(object):
             points_to = val
             is_pointer = True
           elif key == FIELD_TYPE_IS_SLICE:
-            if val != None:
+            if val is not None:
               raise ReaderException('Expected NIL value for IS_SLICE key, got {0!r} instead'.format(val))
             is_slice = True
           elif key == FIELD_TYPE_IS_SELF_POINTER:
-            if val != None:
+            if val is not None:
               raise ReaderException('Expected NIL value for IS_SELF_POINTER key, got {0!r} instead'.format(val))
             is_self_pointer = True
           else:
@@ -220,3 +240,49 @@ class Reader(object):
         for i, instance in enumerate(instances):
           obj = store[i]
           self._process_instance(rtschema, instance, obj, store)
+
+  def _do_automagic(self):
+    rt = self._doc._dr_rt
+    for klass in rt.klasses:
+      if klass.is_lazy():
+        self._automagic_klass(klass)
+    for klass in rt.klasses:
+      for store in klass.stores:
+        if store.is_lazy():
+          self._automagic_store(store)
+      for field in klass.fields:
+        if field.is_lazy():
+          self._automagic_field(field, rt)
+
+  def _automagic_klass(self, rtklass):
+    klass = get_or_create_klass(self._automagic_count, rtklass.serial)
+    ann_schema = AnnSchema.from_klass(klass)
+    rtklass.defn = ann_schema
+    self._doc_schema.add_klass(ann_schema)
+
+  def _automagic_store(self, rtstore):
+    ann_schema = rtstore.klass.defn
+    store = Store(ann_schema.defn)
+    s = store.default()
+    setattr(self._doc, rtstore.serial, s)
+    defn = StoreSchema(rtstore.serial, store.help, store.serial, store, ann_schema)
+    rtstore.defn = defn
+    s.create_n(rtstore.lazy)
+
+  def _automagic_field(self, rtfield, rt):
+    points_to = None
+    if rtfield.is_self_pointer:
+      field = SelfPointer()
+    elif rtfield.is_slice:
+      if rtfield.is_pointer:
+        points_to = rtfield.points_to.defn
+        field = Slice(points_to.stored_type.defn, store=points_to.serial)
+      else:
+        field = Slice()
+    elif rtfield.is_pointer:
+      points_to = rtfield.points_to.defn
+      field = Pointer(points_to.stored_type.defn, store=points_to.serial)
+    else:
+      field = Field()
+    defn = FieldSchema(rtfield.serial, field.help, field.serial, field, rtfield.is_pointer, rtfield.is_self_pointer, rtfield.is_slice, points_to)
+    rtfield.defn = defn

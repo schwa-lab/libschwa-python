@@ -93,6 +93,12 @@ def _merge_rtschema_fields(rtschema, ann_schema, rtstore_map):
 
 
 def merge_rt(rt, doc_schema):
+  """
+  Merges an existing RTManager instance with the provided DocSchema instance
+  @param rt the existing RTManager instance
+  @param doc_schema a DocSchema object from which to merge with the given RTManager instance
+  @return the merged RTManager object
+  """
   # discover known klasses and stores
   klass_id, known_klasses = _find_max_and_known(rt.klasses, 'klass_id')
   store_id, known_stores = _find_max_and_known(rt.doc.stores, 'store_id')
@@ -138,9 +144,14 @@ def merge_rt(rt, doc_schema):
   return rt
 
 
-def build_rt(dschema):
-  rt_doc = RTAnn(0, '__meta__', dschema)
+def build_rt(doc_schema):
+  """
+  Constructs a RTManager instance from a DocSchema instance
+  @param doc_schema a DocSchema object from which to construct a RTManager instance
+  @return the newly created RTManager object
+  """
+  rt_doc = RTAnn(0, '__meta__', doc_schema)
   rt = RTManager()
   rt.doc = rt_doc
   rt.klasses.append(rt_doc)
-  return merge_rt(rt, dschema)
+  return merge_rt(rt, doc_schema)

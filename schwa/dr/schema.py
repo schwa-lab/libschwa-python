@@ -85,6 +85,10 @@ class AnnSchema(BaseSchema):
     for field in self.fields():
       field.add_to_argparse(group, pre)
 
+  @staticmethod
+  def from_klass(klass):
+    return AnnSchema(klass._dr_name, klass._dr_help, klass._dr_serial, klass)
+
 
 class DocSchema(BaseSchema):
   __slots__ = ('_fields', '_stores', '_stores_by_klass', 'klasses')
@@ -125,6 +129,11 @@ class DocSchema(BaseSchema):
     if not isinstance(field, FieldSchema):
       raise TypeError('argument must be a FieldSchema instance')
     self._fields[name] = field
+
+  def add_klass(self, klass):
+    if not isinstance(klass, AnnSchema):
+      raise TypeError('argument must be an AnnSchema instance')
+    self.klasses.append(klass)
 
   def add_store(self, name, store):
     if not isinstance(store, StoreSchema):
@@ -176,6 +185,10 @@ class DocSchema(BaseSchema):
 
     for schema in self.klasses:
       schema.add_to_argparse(parser, prefix)
+
+  @staticmethod
+  def from_klass(klass):
+    return DocSchema(klass._dr_name, klass._dr_help, klass._dr_serial, klass)
 
 
 class FieldSchema(BaseSchema):
@@ -268,16 +281,16 @@ def create_schema(doc_klass):
 
   stored_klasses = {}  # { Ann : AnnSchema }
 
-  s_doc = DocSchema(doc_klass._dr_name, doc_klass._dr_help, doc_klass._dr_serial, doc_klass)
+  s_doc = DocSchema.from_klass(doc_klass)
 
   # construct each of the AnnSchema's
   for attr, store in doc_klass._dr_stores.iteritems():
     store.resolve_klasses()
     klass = store._klass
     if klass not in stored_klasses:
-      s_klass = AnnSchema(klass._dr_name, klass._dr_help, klass._dr_serial, klass)
+      s_klass = AnnSchema.from_klass(klass)
+      s_doc.add_klass(s_klass)
       stored_klasses[klass] = s_klass
-      s_doc.klasses.append(s_klass)
 
   # construct each of the stores
   for attr, store in doc_klass._dr_stores.iteritems():
