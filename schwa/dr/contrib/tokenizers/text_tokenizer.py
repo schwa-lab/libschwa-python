@@ -1,13 +1,11 @@
-#!/usr/bin/env python
 # vim: set ts=2 et:
-
 import logging
-from operator import attrgetter
-from schwa import dr, tokenizer
+from schwa import tokenizer
 
 log = logging.getLogger()
 
 ENC = 'utf-8'
+
 
 class TextTokenizer(object):
   def __init__(self, document_klass, paragraph_klass, sentence_klass, token_klass, save_paragraphs=True, save_sentences=True, save_spans=True):

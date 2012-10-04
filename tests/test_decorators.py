@@ -1,15 +1,16 @@
-
 from unittest import TestCase
 
 from schwa import dr
 
-class Document(dr.Document):
+
+class Document(dr.Doc):
   annots = dr.Store('MyAnnot')
   slices = dr.Store('SliceAnnot')
   super_slices = dr.Store('SuperSliceAnnot')
   favourites = dr.Pointers('MyAnnot')
 
-class MyAnnot(dr.Annotation):
+
+class MyAnnot(dr.Ann):
   field = dr.Field()
   children = dr.Pointers('MyAnnot')
   child = dr.Pointer('MyAnnot')
@@ -17,15 +18,26 @@ class MyAnnot(dr.Annotation):
   def __repr__(self):
     return '{}(field={}, children={}, child={})'.format(self.__class__.__name__, self.field, self.children, self.child)
 
-class SliceAnnot(dr.Annotation):
+  class Meta:
+    name = 'MyAnnot'
+
+
+class SliceAnnot(dr.Ann):
   span = dr.Slice('MyAnnot')
   name = dr.Field()
 
   def __repr__(self):
     return '{}(span={}, name={})'.format(self.__class__.__name__, self.span, self.name)
 
-class SuperSliceAnnot(dr.Annotation):
+  class Meta:
+    name = 'SliceAnnot'
+
+
+class SuperSliceAnnot(dr.Ann):
   slice_span = dr.Slice('SliceAnnot')
+
+  class Meta:
+    name = 'SuperSliceAnnot'
 
 
 class SliceDecoratorsTest(TestCase):
@@ -36,8 +48,9 @@ class SliceDecoratorsTest(TestCase):
     self.doc.slices.create(span=slice(1, 4), name='Long slice')
     self.doc.slices.create(span=slice(5, 6), name='Unit slice')
 
-  def test_materialise_slices(self):
-    decorate = dr.decorators.materialise_slices('slices', 'annots', 'span', 'annots')
+  def test_materialize_slices(self):
+    decorate = dr.decorators.materialize_slices('slices', 'annots', 'span', 'annots')
+
     def assert_clean():
       for sl in self.doc.slices:
         self.assertFalse(hasattr(sl, 'annots'))
@@ -53,6 +66,7 @@ class SliceDecoratorsTest(TestCase):
 
   def test_reverse_mutually_exclusive_slices(self, mark_outside=False):
     decorate = dr.decorators.reverse_slices('slices', 'annots', 'span', pointer_attr='slice_pointer', offset_attr='slice_offset', roffset_attr='slice_roffset', all_attr='slice_all', mutex=True, mark_outside=mark_outside)
+
     def assert_clean():
       for a in self.doc.annots:
         self.assertFalse(hasattr(a, 'slice_pointer'))
@@ -66,10 +80,10 @@ class SliceDecoratorsTest(TestCase):
     slices = self.doc.slices
 
     EXPECTED = {
-      1: (slices[0], 0, 2),
-      2: (slices[0], 1, 1),
-      3: (slices[0], 2, 0),
-      5: (slices[1], 0, 0),
+        1: (slices[0], 0, 2),
+        2: (slices[0], 1, 1),
+        3: (slices[0], 2, 0),
+        5: (slices[1], 0, 0),
     }
     EXPECTED_OUTSIDE = (None, None, None)
 
@@ -114,11 +128,11 @@ class SliceDecoratorsTest(TestCase):
     annots = self.doc.annots
     slices = self.doc.slices
     EXPECTED = {
-      0: [(slices[2], 0, 3)],
-      1: [(slices[2], 1, 2), (slices[0], 0, 2)],
-      2: [(slices[2], 2, 1), (slices[0], 1, 1)],
-      3: [(slices[2], 3, 0), (slices[0], 2, 0)],
-      5: [(slices[1], 0, 0)],
+        0: [(slices[2], 0, 3)],
+        1: [(slices[2], 1, 2), (slices[0], 0, 2)],
+        2: [(slices[2], 2, 1), (slices[0], 1, 1)],
+        3: [(slices[2], 3, 0), (slices[0], 2, 0)],
+        5: [(slices[1], 0, 0)],
     }
 
     for i, a in enumerate(annots):
@@ -155,15 +169,15 @@ class SliceDecoratorsTest(TestCase):
     def assert_clean():
       for ss in self.doc.super_slices:
         self.assertFalse(hasattr(ss, 'myannot_span'))
-    
+
     assert_clean()
     decorate(self.doc)
 
     EXPECTED = [
-      slice(self.doc.slices[0].span.start, self.doc.slices[0].span.stop),
-      slice(self.doc.slices[1].span.start, self.doc.slices[1].span.stop),
-      slice(self.doc.slices[0].span.start, self.doc.slices[1].span.stop),
-      None
+        slice(self.doc.slices[0].span.start, self.doc.slices[0].span.stop),
+        slice(self.doc.slices[1].span.start, self.doc.slices[1].span.stop),
+        slice(self.doc.slices[0].span.start, self.doc.slices[1].span.stop),
+        None
     ]
 
     for i, ss in enumerate(self.doc.super_slices):
@@ -180,11 +194,11 @@ class SliceDecoratorsTest(TestCase):
     self.doc.slices.create(span=slice(2, 3), name='2-3b')
     self.doc.slices.create(span=slice(3, 4), name='3-4')
     decorate = dr.decorators.find_contained_slices('slices', 'span', collection_attr='contained')
-    
+
     def assert_clean():
       for sl in self.doc.slices:
         self.assertFalse(hasattr(sl, 'contained'))
-    
+
     assert_clean()
     decorate(self.doc)
 
@@ -223,7 +237,7 @@ class PointerDecoratorTest(TestCase):
     decorate(self.doc)
 
     EXPECTED = {
-      0: self.doc.annots[1],
+        0: self.doc.annots[1],
     }
     for i, a in enumerate(self.doc.annots):
       if i in EXPECTED:
@@ -251,8 +265,8 @@ class PointerDecoratorTest(TestCase):
     decorate(self.doc)
 
     EXPECTED = {
-      0: self.doc.annots[2],
-      1: self.doc.annots[2],
+        0: self.doc.annots[2],
+        1: self.doc.annots[2],
     }
     for i, a in enumerate(self.doc.annots):
       if i in EXPECTED:
@@ -281,7 +295,7 @@ class PointerDecoratorTest(TestCase):
     decorate(self.doc)
 
     EXPECTED = {
-      0: [self.doc.annots[0], self.doc.annots[1]],
+        0: [self.doc.annots[0], self.doc.annots[1]],
     }
     for i, a in enumerate(self.doc.annots):
       if i in EXPECTED:
@@ -310,8 +324,8 @@ class PointerDecoratorTest(TestCase):
     decorate(self.doc)
 
     EXPECTED = {
-      0: [self.doc.annots[0], self.doc.annots[2]],
-      1: [self.doc.annots[2]],
+        0: [self.doc.annots[0], self.doc.annots[2]],
+        1: [self.doc.annots[2]],
     }
     for i, a in enumerate(self.doc.annots):
       if i in EXPECTED:
@@ -548,7 +562,7 @@ class BuildIndexTest(TestCase):
         2: set((self.doc.slices[0], self.doc.slices[1]))
     }
     self.assertEqual(self.doc.test_index, EXPECTED)
-    
+
     decorate.undo(self.doc)
     assert_clean()
 
@@ -579,7 +593,7 @@ class StoreSubsetTest(TestCase):
     self.doc = Document()
     for val in '0123456':
       self.doc.annots.create(field=val)
-    self.doc.favourites = [self.doc.annots[i] for i in (1,3,5)]
+    self.doc.favourites = [self.doc.annots[i] for i in (1, 3, 5)]
 
   def add_prev_next_favourites_test(self):
     decorate = dr.decorators.add_prev_next(lambda doc: doc.favourites, 'prev', 'next', 'index')
@@ -594,9 +608,9 @@ class StoreSubsetTest(TestCase):
     decorate(self.doc)
 
     EXPECTED = {
-      1: (None, self.doc.annots[3], 0),
-      3: (self.doc.annots[1], self.doc.annots[5], 1),
-      5: (self.doc.annots[3], None, 2),
+        1: (None, self.doc.annots[3], 0),
+        3: (self.doc.annots[1], self.doc.annots[5], 1),
+        5: (self.doc.annots[3], None, 2),
     }
     for i, a in enumerate(self.doc.annots):
       if i in EXPECTED:
@@ -611,42 +625,47 @@ class StoreSubsetTest(TestCase):
 
 class ApplicationsTest(TestCase):
   def real_world_applications_test(self):
-    class Doc(dr.Document):
-      tokens = dr.Store('Token')
-      entities = dr.Store('Entity')
+    class Token(dr.Ann):
+      span = dr.Slice()
+      raw = dr.Field()
+      norm = dr.Field()
 
-    class Token(dr.Token):
       def __repr__(self):
         return 'Token(norm={0!r}, span={1}:{2})'.format(self.norm, self.span.start, self.span.stop)
 
-    class Entity(dr.Annotation):
-      token_span = dr.Slice('Token')
+    class Entity(dr.Ann):
+      token_span = dr.Slice(Token)
       type = dr.Field()
+
       def __repr__(self):
         return 'Entity(type={0!r}, token_span={1}:{2})'.format(self.type, self.token_span.start, self.token_span.stop)
 
+    class Doc(dr.Doc):
+      tokens = dr.Store(Token)
+      entities = dr.Store(Entity)
+
     #       0         1         2         3         4         5         6         7         8
     #       0123456789012345678901234567890123456789012345678901234567890123456789012345678901
-    text = "Tony Abbott's address to party as Gillard polls as preferred prime minister again."
+    #text = "Tony Abbott's address to party as Gillard polls as preferred prime minister again."
 
     doc = Doc()
-    doc.tokens.create(norm="Tony", span=slice(0, 4))        # 0
-    doc.tokens.create(norm="Abbott", span=slice(5, 11))     # 1
-    doc.tokens.create(norm="'s", span=slice(11, 13))        # 2
-    doc.tokens.create(norm="address", span=slice(14, 21))   # 3
-    doc.tokens.create(norm="to", span=slice(22, 24))        # 4
-    doc.tokens.create(norm="party", span=slice(25, 30))     # 5
-    doc.tokens.create(norm="as", span=slice(31, 33))        # 6
-    doc.tokens.create(norm="Gillard", span=slice(34, 41))   # 7
-    doc.tokens.create(norm="polls", span=slice(42, 47))     # 8
-    doc.tokens.create(norm="as", span=slice(48, 50))        # 9
-    doc.tokens.create(norm="preferred", span=slice(51, 60)) # 10
-    doc.tokens.create(norm="prime", span=slice(61, 66))     # 11
-    doc.tokens.create(norm="minister", span=slice(67, 74))  # 12
-    doc.tokens.create(norm="again", span=slice(76, 81))     # 13
-    doc.tokens.create(norm=".", span=slice(81, 82))         # 14
-    doc.entities.create(type='PER', token_span=slice(0, 2)) # 0
-    doc.entities.create(type='PER', token_span=slice(7, 8)) # 1
+    doc.tokens.create(norm="Tony", span=slice(0, 4))         # 0
+    doc.tokens.create(norm="Abbott", span=slice(5, 11))      # 1
+    doc.tokens.create(norm="'s", span=slice(11, 13))         # 2
+    doc.tokens.create(norm="address", span=slice(14, 21))    # 3
+    doc.tokens.create(norm="to", span=slice(22, 24))         # 4
+    doc.tokens.create(norm="party", span=slice(25, 30))      # 5
+    doc.tokens.create(norm="as", span=slice(31, 33))         # 6
+    doc.tokens.create(norm="Gillard", span=slice(34, 41))    # 7
+    doc.tokens.create(norm="polls", span=slice(42, 47))      # 8
+    doc.tokens.create(norm="as", span=slice(48, 50))         # 9
+    doc.tokens.create(norm="preferred", span=slice(51, 60))  # 10
+    doc.tokens.create(norm="prime", span=slice(61, 66))      # 11
+    doc.tokens.create(norm="minister", span=slice(67, 74))   # 12
+    doc.tokens.create(norm="again", span=slice(76, 81))      # 13
+    doc.tokens.create(norm=".", span=slice(81, 82))          # 14
+    doc.entities.create(type='PER', token_span=slice(0, 2))  # 0
+    doc.entities.create(type='PER', token_span=slice(7, 8))  # 1
 
     # convert from character spans to token spans
     dr.decorators.build_index('tokens', 'span.start', 'token_index_by_start', by_index=True)(doc)
@@ -664,7 +683,7 @@ class ApplicationsTest(TestCase):
     self.assertSetEqual(set(repr(x) for x in (slice(0, 11), slice(34, 41))), set(repr(ent.char_span) for ent in doc.entities_by_type['PER']))
 
     # traverse tokens in context around entity
-    dr.decorators.materialise_slices('entities', 'tokens', 'token_span', 'tokens')(doc)
+    dr.decorators.materialize_slices('entities', 'tokens', 'token_span', 'tokens')(doc)
     dr.decorators.add_prev_next('tokens', 'prev', 'next')(doc)
     self.assertEqual([('preferred', 'minister')], [(entity.tokens[0].prev.norm, entity.tokens[-1].next.norm) for entity in doc.entities_by_type['PER_DESC']])
 

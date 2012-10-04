@@ -3,39 +3,28 @@ import unittest
 
 from schwa import dr
 
-from utils import write_read, write_x_read_y
+from utils import write_read
 
 # TODO: test pointers to renamed stores
 
-class X(dr.Annotation):
+
+class X(dr.Ann):
   foo = dr.Field(serial='chicken')
   bar = dr.Field()
 
-  class Meta:
-    name = 'test_serial.X'
 
-
-class Doc1(dr.Document):
+class Doc1(dr.Doc):
   name = dr.Field(serial='filename')
   xs = dr.Store(X)
 
-  class Meta:
-    name = 'test_serial.Doc1'
 
-
-class Doc2(dr.Document):
+class Doc2(dr.Doc):
   filename = dr.Field()
   xs = dr.Store(X)
 
-  class Meta:
-    name = 'test_serial.Doc2'
 
-
-class Doc3(dr.Document):
+class Doc3(dr.Doc):
   exes = dr.Store(X, serial='xs')
-
-  class Meta:
-    name = 'test_serial.Doc3'
 
 
 class SerialTest(unittest.TestCase):
@@ -58,14 +47,11 @@ class SerialTest(unittest.TestCase):
     for x in d1.xs:
       self.assertEqual(len(x._dr_fields), 2)
       self.assertEqual(len(x._dr_stores), 0)
-      self.assertEqual(len(x._dr_s2p), 2)
-      self.assertListEqual(sorted(x._dr_fields), ['bar', 'foo'])
-      self.assertDictEqual(x._dr_s2p, {'chicken': 'foo', 'bar': 'bar'})
       self.assertTrue(hasattr(x, 'foo'))
       self.assertTrue(hasattr(x, 'bar'))
       self.assertFalse(hasattr(x, 'chicken'))
 
-    d2 = write_read(d1)
+    d2 = write_read(d1, Doc1)
     self.assertIsNot(d1, d2)
     self.assertIsInstance(d2, Doc1)
 
@@ -80,9 +66,6 @@ class SerialTest(unittest.TestCase):
     for x in d2.xs:
       self.assertEqual(len(x._dr_fields), 2)
       self.assertEqual(len(x._dr_stores), 0)
-      self.assertEqual(len(x._dr_s2p), 2)
-      self.assertListEqual(sorted(x._dr_fields), ['bar', 'foo'])
-      self.assertDictEqual(x._dr_s2p, {'chicken': 'foo', 'bar': 'bar'})
       self.assertTrue(hasattr(x, 'foo'))
       self.assertTrue(hasattr(x, 'bar'))
       self.assertFalse(hasattr(x, 'chicken'))
@@ -94,7 +77,7 @@ class SerialTest(unittest.TestCase):
     d1.xs.create(foo=5)
     d1.xs.create(bar='bar')
 
-    d2 = write_x_read_y(d1, Doc2)
+    d2 = write_read(d1, Doc1, Doc2)
     self.assertIsNot(d1, d2)
     self.assertIsInstance(d2, Doc2)
 
@@ -105,9 +88,6 @@ class SerialTest(unittest.TestCase):
     for x in d2.xs:
       self.assertEqual(len(x._dr_fields), 2)
       self.assertEqual(len(x._dr_stores), 0)
-      self.assertEqual(len(x._dr_s2p), 2)
-      self.assertListEqual(sorted(x._dr_fields), ['bar', 'foo'])
-      self.assertDictEqual(x._dr_s2p, {'chicken': 'foo', 'bar': 'bar'})
       self.assertTrue(hasattr(x, 'foo'))
       self.assertTrue(hasattr(x, 'bar'))
       self.assertFalse(hasattr(x, 'chicken'))
@@ -119,12 +99,12 @@ class SerialTest(unittest.TestCase):
     d1.xs.create(foo=5)
     d1.xs.create(bar='bar')
 
-    d3 = write_x_read_y(d1, Doc3)
+    d3 = write_read(d1, Doc1, Doc3)
     self.assertFalse(hasattr(d3, 'xs'))
     self.assertEqual(len(d3.exes), len(d1.xs))
     for x, y in zip(d3.exes, d1.xs):
       self.assertEqual(x.foo, y.foo)
       self.assertEqual(x.bar, y.bar)
 
-    d1 = write_x_read_y(d3, Doc1)
+    d1 = write_read(d3, Doc3, Doc1)
     self.assertFalse(hasattr(d1, 'exes'))

@@ -1,24 +1,15 @@
 # vim: set ts=2 et:
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from schwa import dr
 
 
-def write_x_read_y(doc, class2=None):
-  """
-  typecast doc as class2
-  """
-  print 'Writing {0}'.format(doc.__class__.__name__)
+def write_read(doc, out_schema, in_schema=None):
+  if in_schema is None:
+    in_schema = out_schema
+  print 'Writing {0}'.format(out_schema)
   f = StringIO()
-  dr.Writer(f).write_doc(doc)
+  dr.Writer(f, out_schema).write(doc)
   f.seek(0)
-  if class2 is None:
-    print 'Reading meta.Document'
-  else:
-    print 'Reading {0}'.format(class2.__name__)
-  return dr.Reader(class2).stream(f).next()
-
-
-def write_read(doc):
-  return write_x_read_y(doc, doc.__class__)
-
+  print 'Reading {0}'.format(in_schema)
+  return dr.Reader(f, in_schema).next()

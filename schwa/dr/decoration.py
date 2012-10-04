@@ -1,10 +1,10 @@
 """
 Utilities for managing document decoration by marking the document with the set of decorations that have been applied to it.
 """
-
-from __future__ import absolute_import
 from collections import defaultdict
 from functools import wraps, partial
+
+__all__ = ['Decorator', 'decorator', 'method_requires_decoration', 'requires_decoration']
 
 
 def decorator(key=None):
@@ -15,12 +15,12 @@ def decorator(key=None):
   def dec(fn):
     @wraps(fn)
     def wrapper(doc, check=True, mark=True):
-      if not hasattr(doc, '_decorated_by'):
-        doc._decorated_by = {}
-      if check and key in doc._decorated_by:
+      if not hasattr(doc, '_dr_decorated_by'):
+        doc._dr_decorated_by = {}
+      if check and key in doc._dr_decorated_by:
         return
       if mark:
-        doc._decorated_by[key] = wrapper
+        doc._dr_decorated_by[key] = wrapper
       fn(doc)
     wrapper.reapply = partial(wrapper, check=False)
     return wrapper
@@ -46,9 +46,9 @@ class Decorator(object):
   def _set_affected_fields(self, *args):
     """
     Stores a list of fields affected (i.e. set) for this decorator, aiding in reflexion and undo operations.
-    
+
     Elements of args should be (store, field) pairs, or just an attr string for attributes of the document set by the decorator.
-    
+
     Where store, field or attr are not strings or None for any of the args, affected fields will not be stored.
     """
     field_map = defaultdict(set)
@@ -100,7 +100,7 @@ class Decorator(object):
 
     if unmark:
       try:
-        del doc._decorated_by[self._key]
+        del doc._dr_decorated_by[self._key]
       except KeyError:
         pass
 

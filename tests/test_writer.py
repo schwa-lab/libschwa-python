@@ -3,79 +3,80 @@
 Manual testing of the Writer. Some hand-written serialisations of various
 situations.
 """
-import StringIO
+import cStringIO
 import unittest
 
 from schwa import dr
 
 
-class DocWithField(dr.Document):
+class DocWithField(dr.Doc):
   name = dr.Field()
 
   class Meta:
-    name = 'writer.DocWithField'
+    serial = 'writer.DocWithField'
 
 
-class DocWithFieldWithSerial(dr.Document):
+class DocWithFieldWithSerial(dr.Doc):
   name = dr.Field(serial='filename')
 
   class Meta:
-    name = 'writer.DocWithFieldWithSerial'
+    serial = 'writer.DocWithFieldWithSerial'
 
 
-class A(dr.Annotation):
+class A(dr.Ann):
   value = dr.Field()
 
   class Meta:
-    name = 'writer.A'
+    serial = 'writer.A'
 
 
-class Y(dr.Annotation):
+class Y(dr.Ann):
   p = dr.Pointer(A)
 
   class Meta:
-    name = 'writer.Y'
+    serial = 'writer.Y'
 
 
-class Z(dr.Annotation):
+class Z(dr.Ann):
   p = dr.Pointer(A, serial='zp')
   value = dr.Field()
 
   class Meta:
-    name = 'writer.Z'
+    serial = 'writer.Z'
 
 
-class DocWithA(dr.Document):
+class DocWithA(dr.Doc):
   as_ = dr.Store(A, serial='as')
 
   class Meta:
-    name = 'writer.DocWithA'
+    serial = 'writer.DocWithA'
 
 
-class DocWithAYZ(dr.Document):
+class DocWithAYZ(dr.Doc):
   as_ = dr.Store(A, serial='as')
   ys = dr.Store(Y)
   zs = dr.Store(Z)
 
   class Meta:
-    name = 'writer.DocWithAYZ'
+    serial = 'writer.DocWithAYZ'
 
 
 # =============================================================================
 # unit testing code
 # =============================================================================
-def serialise(doc):
-  f = StringIO.StringIO()
-  dr.Writer(f).write_doc(doc)
+def serialise(doc, doc_klass):
+  f = cStringIO.StringIO()
+  dr.Writer(f, doc_klass).write(doc)
   return f.getvalue()
 
 
 class TestDocWithField(unittest.TestCase):
   def test_nameisnull(self):
     d = DocWithField()
-    s = serialise(d)
+    s = serialise(d, DocWithField)
 
-    correct = StringIO.StringIO()
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x91')  # <klasses>: 1-element array
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa8__meta__')  # <klass_name>: 8-bytes of utf-8 encoded "__meta__"
@@ -91,9 +92,10 @@ class TestDocWithField(unittest.TestCase):
 
   def test_name(self):
     d = DocWithField(name='/etc/passwd')
-    s = serialise(d)
+    s = serialise(d, DocWithField)
 
-    correct = StringIO.StringIO()
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x91')  # <klasses>: 1-element array
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -113,9 +115,10 @@ class TestDocWithField(unittest.TestCase):
 class TestDocWithFieldSerial(unittest.TestCase):
   def test_nameisnull(self):
     d = DocWithFieldWithSerial()
-    s = serialise(d)
+    s = serialise(d, DocWithFieldWithSerial)
 
-    correct = StringIO.StringIO()
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x91')  # <klasses>: 1-element array
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -131,9 +134,10 @@ class TestDocWithFieldSerial(unittest.TestCase):
 
   def test_name(self):
     d = DocWithFieldWithSerial(name='/etc/passwd')
-    s = serialise(d)
+    s = serialise(d, DocWithFieldWithSerial)
 
-    correct = StringIO.StringIO()
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x91')  # <klasses>: 1-element array
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -153,9 +157,10 @@ class TestDocWithFieldSerial(unittest.TestCase):
 class TestDocWithA(unittest.TestCase):
   def test_empty(self):
     d = DocWithA()
-    s = serialise(d)
+    s = serialise(d, DocWithA)
 
-    correct = StringIO.StringIO()
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x92')  # <klasses>: 2-element array
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -184,9 +189,10 @@ class TestDocWithA(unittest.TestCase):
     d.as_.create(value=2)
     d.as_.create()
     d.as_.create(value=True)
-    s = serialise(d)
+    s = serialise(d, DocWithA)
 
-    correct = StringIO.StringIO()
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x92')  # <klasses>: 2-element array
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -216,60 +222,91 @@ class TestDocWithA(unittest.TestCase):
 
 class TestDocWithAYZ(unittest.TestCase):
   def test_empty(self):
+    dschema = DocWithAYZ.schema()
     d = DocWithAYZ()
-    s = serialise(d)
+    s = serialise(d, dschema)
 
-    correct = StringIO.StringIO()
+    klass_ids = {}
+    for i, ann_schema in enumerate(dschema.klasses):
+      klass_ids[ann_schema.serial] = i + 1
+    store_ids = {}
+    for i, store_schema in enumerate(dschema.stores()):
+      store_ids[store_schema.serial] = i
+
+    correct = cStringIO.StringIO()
+    correct.write('\x02')  # <wire_version>
     correct.write('\x94')  # <klasses>: 4-element array
     correct.write('\x92')  # <klass>: 2-element array
 
     correct.write('\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
     correct.write('\x90')  # <fields>: 0-element array
 
-    correct.write('\x92')  # <klass>: 2-element array
-    correct.write('\xa8writer.A')  # <klass_name>: utf-8 encoded "writer.A"
-    correct.write('\x91')  # <fields>: 1-element array
-    correct.write('\x81')  # <field>: 1-element map
-    correct.write('\x00')  # 0: NAME
-    correct.write('\xa5value')  # utf-8 encoded "value"
+    klass_A = cStringIO.StringIO()
+    klass_A.write('\x92')  # <klass>: 2-element array
+    klass_A.write('\xa8writer.A')  # <klass_name>: utf-8 encoded "writer.A"
+    klass_A.write('\x91')  # <fields>: 1-element array
+    klass_A.write('\x81')  # <field>: 1-element map
+    klass_A.write('\x00')  # 0: NAME
+    klass_A.write('\xa5value')  # utf-8 encoded "value"
 
-    correct.write('\x92')  # <klass>: 2-element array
-    correct.write('\xa8writer.Y')  # <klass_name>: utf-8 encoded "writer.Y"
-    correct.write('\x91')  # <fields>: 1-element array
-    correct.write('\x82')  # <field>: 2-element map
-    correct.write('\x00')  # 0: NAME
-    correct.write('\xa1p')  # utf-8 encoded "p"
-    correct.write('\x01')  # 1: POINTER_TO
-    correct.write('\x00')  # <store_id>: 0
+    klass_Y = cStringIO.StringIO()
+    klass_Y.write('\x92')  # <klass>: 2-element array
+    klass_Y.write('\xa8writer.Y')  # <klass_name>: utf-8 encoded "writer.Y"
+    klass_Y.write('\x91')  # <fields>: 1-element array
+    klass_Y.write('\x82')  # <field>: 2-element map
+    klass_Y.write('\x00')  # 0: NAME
+    klass_Y.write('\xa1p')  # utf-8 encoded "p"
+    klass_Y.write('\x01')  # 1: POINTER_TO
+    klass_Y.write(chr(store_ids['as']))  # <store_id>
 
-    correct.write('\x92')  # <klass>: 2-element array
-    correct.write('\xa8writer.Z')  # <klass_name>: utf-8 encoded "writer.Z"
-    correct.write('\x92')  # <fields>: 2-element array
-    correct.write('\x82')  # <field>: 2-element map
-    correct.write('\x00')  # 0: NAME
-    correct.write('\xa2zp')  # utf-8 encoded "zp"
-    correct.write('\x01')  # 1: POINTER_TO
-    correct.write('\x00')  # <store_id>: 0
-    correct.write('\x81')  # <field>: 1-element map
-    correct.write('\x00')  # 0: NAME
-    correct.write('\xa5value')  # utf-8 encoded "value"
+    klass_Z = cStringIO.StringIO()
+    klass_Z.write('\x92')  # <klass>: 2-element array
+    klass_Z.write('\xa8writer.Z')  # <klass_name>: utf-8 encoded "writer.Z"
+    klass_Z.write('\x92')  # <fields>: 2-element array
+    klass_Z.write('\x82')  # <field>: 2-element map
+    klass_Z.write('\x00')  # 0: NAME
+    klass_Z.write('\xa2zp')  # utf-8 encoded "zp"
+    klass_Z.write('\x01')  # 1: POINTER_TO
+    klass_Z.write(chr(store_ids['as']))  # <store_id>
+    klass_Z.write('\x81')  # <field>: 1-element map
+    klass_Z.write('\x00')  # 0: NAME
+    klass_Z.write('\xa5value')  # utf-8 encoded "value"
+
+    correct_klasses = {
+      'writer.A': klass_A,
+      'writer.Y': klass_Y,
+      'writer.Z': klass_Z,
+    }
+    for i, ann_schema in enumerate(dschema.klasses):
+      correct.write(correct_klasses[ann_schema.serial].getvalue())
 
     correct.write('\x93')  # <stores>: 3-element array
 
-    correct.write('\x93')  # <store>: 3-element array
-    correct.write('\xa2as')  # <store_name>: utf-8 encoded "as"
-    correct.write('\x01')  # <klass_id>: 1
-    correct.write('\x00')  # <store_nelem>: 0
+    store_as = cStringIO.StringIO()
+    store_as.write('\x93')  # <store>: 3-element array
+    store_as.write('\xa2as')  # <store_name>: utf-8 encoded "as"
+    store_as.write(chr(klass_ids['writer.A']))  # <klass_id>
+    store_as.write('\x00')  # <store_nelem>: 0
 
-    correct.write('\x93')  # <store>: 3-element array
-    correct.write('\xa2ys')  # <store_name>: utf-8 encoded "ys"
-    correct.write('\x02')  # <klass_id>: 2
-    correct.write('\x00')  # <store_nelem>: 0
+    store_ys = cStringIO.StringIO()
+    store_ys.write('\x93')  # <store>: 3-element array
+    store_ys.write('\xa2ys')  # <store_name>: utf-8 encoded "ys"
+    store_ys.write(chr(klass_ids['writer.Y']))  # <klass_id>
+    store_ys.write('\x00')  # <store_nelem>: 0
 
-    correct.write('\x93')  # <store>: 3-element array
-    correct.write('\xa2zs')  # <store_name>: utf-8 encoded "zs"
-    correct.write('\x03')  # <klass_id>: 3
-    correct.write('\x00')  # <store_nelem>: 0
+    store_zs = cStringIO.StringIO()
+    store_zs.write('\x93')  # <store>: 3-element array
+    store_zs.write('\xa2zs')  # <store_name>: utf-8 encoded "zs"
+    store_zs.write(chr(klass_ids['writer.Z']))  # <klass_id>
+    store_zs.write('\x00')  # <store_nelem>: 0
+
+    correct_stores = {
+      'as': store_as,
+      'ys': store_ys,
+      'zs': store_zs,
+    }
+    for store_schema in dschema.stores():
+      correct.write(correct_stores[store_schema.serial].getvalue())
 
     correct.write('\x01')  # <instance_nbytes>: 1 byte after this for the document
     correct.write('\x80')  # <instance>: 0-element map

@@ -1,10 +1,14 @@
 # vim: set ts=2 et:
-__all__ = ['DependencyException', 'StoreException']
+__all__ = ['DependencyException', 'ReaderException', 'WriterException']
 
 
 class DependencyException(Exception):
   pass
 
 
-class StoreException(Exception):
+class ReaderException(Exception):
+  pass
+
+
+class WriterException(Exception):
   pass

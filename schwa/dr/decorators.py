@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+# vim: set ts=2 et:
 from collections import defaultdict
 from functools import partial
 import operator
@@ -8,11 +8,12 @@ from types import StringTypes, TupleType
 
 from .decoration import Decorator
 
+__all__ = ['add_prev_next', 'build_index', 'build_multi_index', 'materialize_slices', 'reverse_slices', 'find_contained_slices', 'convert_slices', 'reverse_pointers']
+
 
 def _attrsetter(attr):
   if attr is None:
-    def fn(obj, val):
-      pass
+    fn = lambda obj, val: None
   else:
     def fn(obj, val):
       setattr(obj, attr, val)
@@ -168,13 +169,13 @@ class build_multi_index(build_index):
     super(build_multi_index, self).__init__(*args, **kwargs)
 
 
-class materialise_slices(Decorator):
+class materialize_slices(Decorator):
   """
   Decorates entries in the source_store with deref_attr, the list of elements
   in target_store corresponding to the slice_attr value.
   """
   def __init__(self, source_store, target_store, slice_attr, deref_attr):
-    super(materialise_slices, self).__init__(self._build_key(source_store, target_store, slice_attr, deref_attr))
+    super(materialize_slices, self).__init__(self._build_key(source_store, target_store, slice_attr, deref_attr))
     self.get_source_store = _storegetter(source_store)
     self.get_target_store = _storegetter(target_store)
     self.slice_attr = slice_attr
@@ -243,8 +244,8 @@ class find_contained_slices(Decorator):
   """
   Adds collection_attr to each containing_store object O, being a list of the
   objects in contained_store with a contained_slice that is a sub-span of O's
-  containing_slice value. 
-  
+  containing_slice value.
+
   If contained_store (or contained_slice) is None, the value is copied from
   containing_store (containing_slice). In this case, each O will not be
   included in its contained objects collection.
