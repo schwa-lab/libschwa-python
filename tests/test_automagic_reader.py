@@ -46,7 +46,7 @@ class TestCase(unittest.TestCase):
     self.assertEqual(len(docs), 2)
 
     rewritten = cStringIO.StringIO()
-    writer = dr.Writer(rewritten, reader.doc_schema())
+    writer = dr.Writer(rewritten, reader.doc_schema)
 
     doc = docs[0]
     self.assertTrue(hasattr(doc, 'tokens'))
