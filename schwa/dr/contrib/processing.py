@@ -8,22 +8,23 @@ try:
 except ImportError:
   zmq = None
 
-from .reader import Reader
-from .writer import Writer
+from ..reader import Reader
+from ..writer import Writer
 
 
-def stream_coroutine(istream, ostream, doc_class=None):
-  writer = Writer(ostream)
-  for doc in Reader(doc_class).stream(istream):
+def stream_coroutine(istream, ostream, doc_class=None, automagic=False):
+  reader = Reader(istream, doc_class, automagic)
+  writer = Writer(ostream, reader.doc_schema())
+  for doc in :
     res = yield(doc)
-    writer.write_doc(res or doc)
+    writer.write(res or doc)
 
 
-def zmq_coroutine(context, dealer_url, doc_class=None):
+def zmq_coroutine(context, dealer_url, doc_class=None, automagic=False):
   istream = StringIO()
   ostream = StringIO()
-  reader = Reader(doc_class)
-  writer = Writer(ostream)
+  reader = Reader(istream, doc_class, automagic)
+  writer = Writer(ostream, reader.doc_schema())
   socket = context.socket(zmq.REP)
   socket.connect(dealer_url)
   while True:
@@ -32,7 +33,7 @@ def zmq_coroutine(context, dealer_url, doc_class=None):
     istream.seek(0)
     for doc in reader.stream(istream):
       res = yield(doc)
-      writer.write_doc(res or doc)
+      writer.write(res or doc)
     ostream.seek(0)
     socket.send(ostream.getvalue())
     istream.truncate(0)
