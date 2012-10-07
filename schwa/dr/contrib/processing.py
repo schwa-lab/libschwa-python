@@ -14,7 +14,7 @@ from ..writer import Writer
 
 def stream_coroutine(istream, ostream, doc_class=None, automagic=False):
   reader = Reader(istream, doc_class, automagic)
-  writer = Writer(ostream, reader.doc_schema())
+  writer = Writer(ostream, reader.doc_schema)
   for doc in reader:
     res = yield(doc)
     writer.write(res or doc)
@@ -24,7 +24,7 @@ def zmq_coroutine(context, dealer_url, doc_class=None, automagic=False):
   istream = StringIO()
   ostream = StringIO()
   reader = Reader(istream, doc_class, automagic)
-  writer = Writer(ostream, reader.doc_schema())
+  writer = Writer(ostream, reader.doc_schema)
   socket = context.socket(zmq.REP)
   socket.connect(dealer_url)
   while True:
