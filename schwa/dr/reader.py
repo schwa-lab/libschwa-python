@@ -6,9 +6,9 @@ import msgpack
 from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
 from .exceptions import ReaderException
 from .fields_core import Field, Pointer, SelfPointer, Slice, Store
+from .meta import Doc
 from .rtklasses import get_or_create_klass
 from .runtime import RTField, RTStore, RTAnn, RTManager
-from .meta import Doc
 from .schema import AnnSchema, DocSchema, FieldSchema, StoreSchema
 
 __all__ = ['Reader']
@@ -25,21 +25,23 @@ class Reader(object):
     @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
     @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
     """
+    self._doc = None
+    self._unpacker = msgpack.Unpacker(istream)
+    self._automagic = automagic
+    self._automagic_count = 0
     if doc_schema_or_doc is None:
       if not automagic:
         raise ValueError('doc_schema_or_doc can only be None if automagic is True')
-      self._doc_schema = None
+      doc_klass = get_or_create_klass(self._automagic_count, 'Doc', is_doc=True)
+      self._doc_schema = doc_klass.schema()
     elif isinstance(doc_schema_or_doc, DocSchema):
       self._doc_schema = doc_schema_or_doc
     elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
       self._doc_schema = doc_schema_or_doc.schema()
     else:
       raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
-    self._doc = None
-    self._unpacker = msgpack.Unpacker(istream)
-    self._automagic = automagic
-    self._automagic_count = 0
 
+  @property
   def doc_schema(self):
     """Returns the DocSchema instance used/created during the reading process."""
     return self._doc_schema
@@ -65,9 +67,6 @@ class Reader(object):
       raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, Reader.WIRE_VERSION))
 
     # create the Doc instance and RTManager
-    if self._doc_schema is None and self._automagic:
-      doc_klass = get_or_create_klass(self._automagic_count, 'Doc', is_doc=True)
-      self._doc_schema = doc_klass.schema()
     doc = self._doc = self._doc_schema.defn()
     doc._dr_rt = RTManager()
 
