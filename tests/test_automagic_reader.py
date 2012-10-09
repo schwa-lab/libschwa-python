@@ -17,6 +17,7 @@ class Sent(dr.Ann):
 class Doc(dr.Doc):
   tokens = dr.Store(Token)
   sents = dr.Store(Sent)
+  adjectives = dr.Pointers(Token)
 
 
 def write(out):
@@ -29,6 +30,7 @@ def write(out):
   doc2.tokens.create(span=slice(17, 20), norm='fox')
   doc2.tokens.create(span=slice(20, 21), norm='.')
   doc2.sents.create(span=slice(0, 5))
+  doc2.adjectives = doc2.tokens[1:3]
 
   writer = dr.Writer(out, Doc)
   writer.write(doc1)
@@ -53,6 +55,7 @@ class TestCase(unittest.TestCase):
     self.assertTrue(hasattr(doc, 'sents'))
     self.assertEqual(len(doc.tokens), 0)
     self.assertEqual(len(doc.sents), 0)
+    self.assertEqual(doc.adjectives, None)
     writer.write(doc)
 
     doc = docs[1]
@@ -71,6 +74,7 @@ class TestCase(unittest.TestCase):
     self.assertEqual(doc.tokens[4].norm, '.')
     self.assertEqual(doc.tokens[4].span, slice(20, 21))
     self.assertEqual(doc.sents[0].span, slice(0, 5))
+    self.assertListEqual(doc.adjectives, doc.tokens[1:3])
     writer.write(doc)
 
     orig.seek(0)
