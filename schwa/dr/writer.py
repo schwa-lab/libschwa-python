@@ -3,7 +3,7 @@ import inspect
 
 import msgpack
 
-from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
+from .constants import FieldType
 from .exceptions import WriterException
 from .runtime import build_rt, merge_rt
 from .meta import Doc
@@ -96,16 +96,19 @@ class Writer(object):
         field = {}
         fields.append(field)
         # <field_type> ::= 0 # NAME => the name of the field
-        field[FIELD_TYPE_NAME] = f.serial if f.is_lazy() else f.defn.serial
+        field[FieldType.NAME] = f.serial if f.is_lazy() else f.defn.serial
         # <field_type> ::= 1 # POINTER_TO => the <store_id> that this field points into
         if f.is_pointer:
-          field[FIELD_TYPE_POINTER_TO] = f.points_to.store_id
+          field[FieldType.POINTER_TO] = f.points_to.store_id
         # <field_type> ::= 2 # IS_SLICE => whether or not this field is a "Slice" field
         if f.is_slice:
-          field[FIELD_TYPE_IS_SLICE] = None
+          field[FieldType.IS_SLICE] = None
         # <field_type>  ::= 3 # IS_SELF_POINTER => whether or not this field is a self-pointer
         if f.is_self_pointer:
-          field[FIELD_TYPE_IS_SELF_POINTER] = None
+          field[FieldType.IS_SELF_POINTER] = None
+        # <field_type>  ::= 4 # IS_COLLECTION => whether or not this field is a collection
+        if f.is_collection:
+          field[FieldType.IS_COLLECTION] = None
 
       # work out the serial name for the class
       if klass is rt.doc:

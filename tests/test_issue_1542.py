@@ -46,15 +46,19 @@ class TestCase(unittest.TestCase):
     correct.write('\x92')  # <klass>: 2-element array
     correct.write('\xa1X')  # <klass_name>: utf-8 encoded "X"
     correct.write('\x92')  # <fields>: 2-element array
-    correct.write('\x82')  # <field>: 2-element map
+    correct.write('\x83')  # <field>: 3-element map
     correct.write('\x00')  # 0: NAME
     correct.write('\xa1a')  # utf-8 encoded "a"
     correct.write('\x01')  # 1: IS_POINTER
     correct.write('\x00')  # <store_id>
-    correct.write('\x82')  # <field>: 2-element map
+    correct.write('\x04')  # 4: IS_COLLECTION
+    correct.write('\xc0')  # NIL
+    correct.write('\x83')  # <field>: 3-element map
     correct.write('\x00')  # 0: NAME
     correct.write('\xa1b')  # utf-8 encoded "b"
     correct.write('\x03')  # 3: IS_SELF_POINTER
+    correct.write('\xc0')  # NIL
+    correct.write('\x04')  # 4: IS_COLLECTION
     correct.write('\xc0')  # NIL
 
     correct.write('\x91')  # <stores>: 1-element array

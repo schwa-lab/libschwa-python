@@ -132,10 +132,8 @@ class Base(object):
   def __init__(self, **kwargs):
     for name, field in self._dr_fields.iteritems():
       setattr(self, name, field.default())
-      #self.__dict__[name] = field.default()
     for name, store in self._dr_stores.iteritems():
       setattr(self, name, store.default())
-      #self.__dict__[name] = store.default()
     self._dr_lazy = None
 
     for k, v in kwargs.iteritems():

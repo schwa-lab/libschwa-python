@@ -55,7 +55,7 @@ class TestCase(unittest.TestCase):
     self.assertTrue(hasattr(doc, 'sents'))
     self.assertEqual(len(doc.tokens), 0)
     self.assertEqual(len(doc.sents), 0)
-    self.assertEqual(doc.adjectives, None)
+    self.assertEqual(doc.adjectives, [])
     writer.write(doc)
 
     doc = docs[1]

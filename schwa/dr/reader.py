@@ -3,9 +3,9 @@ import inspect
 
 import msgpack
 
-from .constants import FIELD_TYPE_NAME, FIELD_TYPE_POINTER_TO, FIELD_TYPE_IS_SLICE, FIELD_TYPE_IS_SELF_POINTER
+from .constants import FieldType
 from .exceptions import ReaderException
-from .fields_core import Field, Pointer, SelfPointer, Slice, Store
+from .fields_core import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice, Store
 from .meta import Doc
 from .rtklasses import get_or_create_klass
 from .runtime import RTField, RTStore, RTAnn, RTManager
@@ -103,23 +103,27 @@ class Reader(object):
       # for each <fields> ::= [ <field> ]
       for f, field in enumerate(fields):
         field_name = points_to = None
-        is_pointer = is_self_pointer = is_slice = False
+        is_pointer = is_self_pointer = is_slice = is_collection = False
 
         # process fields map <field> ::= { <field_type> : <field_val> }
         for key, val in field.iteritems():
-          if key == FIELD_TYPE_NAME:
+          if key == FieldType.NAME:
             field_name = val
-          elif key == FIELD_TYPE_POINTER_TO:
+          elif key == FieldType.POINTER_TO:
             points_to = val
             is_pointer = True
-          elif key == FIELD_TYPE_IS_SLICE:
+          elif key == FieldType.IS_SLICE:
             if val is not None:
               raise ReaderException('Expected NIL value for IS_SLICE key, got {0!r} instead'.format(val))
             is_slice = True
-          elif key == FIELD_TYPE_IS_SELF_POINTER:
+          elif key == FieldType.IS_SELF_POINTER:
             if val is not None:
               raise ReaderException('Expected NIL value for IS_SELF_POINTER key, got {0!r} instead'.format(val))
             is_self_pointer = True
+          elif key == FieldType.IS_COLLECTION:
+            if val is not None:
+              raise ReaderException('Expected NIL value for IS_COLLECTION key, got {0!r} instead'.format(val))
+            is_collection = True
           else:
             raise ReaderException('Unknown key {0!r} in <field> map'.format(key))
 
@@ -129,7 +133,7 @@ class Reader(object):
 
         # see if the read in field exists on the registered class's schema
         if rtschema.is_lazy():
-          rtfield = RTField(f, field_name, points_to, is_slice, is_self_pointer)
+          rtfield = RTField(f, field_name, points_to, is_slice, is_self_pointer, is_collection)
         else:
           # try and find the field on the registered class
           defn = None
@@ -137,7 +141,7 @@ class Reader(object):
             if fs.serial == field_name:
               defn = fs
               break
-          rtfield = RTField(f, field_name, points_to, is_slice, is_self_pointer, defn)
+          rtfield = RTField(f, field_name, points_to, is_slice, is_self_pointer, is_collection, defn=defn)
 
           # perform some sanity checks that the type of data on the stream is what we're expecting
           if defn is not None:
@@ -147,6 +151,8 @@ class Reader(object):
               raise ReaderException("Field {0!r} of class {1!r} has IS_SLICE as {2} on the stream, but {3} on the class's field".format(field_name, klass_name, is_slice, defn.is_slice))
             if is_self_pointer != defn.is_self_pointer:
               raise ReaderException("Field {0!r} of class {1!r} has IS_SELF_POINTER as {2} on the stream, but {3} on the class's field".format(field_name, klass_name, is_self_pointer, defn.is_self_pointer))
+            if is_collection != defn.is_collection:
+              raise ReaderException("Field {0!r} of class {1!r} has IS_COLLECTION as {2} on the stream, but {3} on the class's field".format(field_name, klass_name, is_collection, defn.is_collection))
 
         # add the field to the schema
         rtschema.fields.append(rtfield)
@@ -257,7 +263,7 @@ class Reader(object):
           self._automagic_store(store)
       for field in klass.fields:
         if field.is_lazy():
-          self._automagic_field(field, rt)
+          self._automagic_field(field, klass, rt)
 
   def _automagic_klass(self, rtklass):
     klass = get_or_create_klass(self._automagic_count, rtklass.serial)
@@ -274,10 +280,13 @@ class Reader(object):
     rtstore.defn = defn
     s.create_n(rtstore.lazy)
 
-  def _automagic_field(self, rtfield, rt):
+  def _automagic_field(self, rtfield, rtklass, rt):
     points_to = None
     if rtfield.is_self_pointer:
-      field = SelfPointer()
+      if rtfield.is_collection:
+        field = SelfPointers()
+      else:
+        field = SelfPointer()
     elif rtfield.is_slice:
       if rtfield.is_pointer:
         points_to = rtfield.points_to.defn
@@ -286,8 +295,14 @@ class Reader(object):
         field = Slice()
     elif rtfield.is_pointer:
       points_to = rtfield.points_to.defn
-      field = Pointer(points_to.stored_type.defn, store=points_to.serial)
+      if rtfield.is_collection:
+        field = Pointers(points_to.stored_type.defn, store=points_to.serial)
+      else:
+        field = Pointer(points_to.stored_type.defn, store=points_to.serial)
     else:
       field = Field()
-    defn = FieldSchema(rtfield.serial, field.help, field.serial, field, rtfield.is_pointer, rtfield.is_self_pointer, rtfield.is_slice, points_to)
+    defn = FieldSchema(rtfield.serial, field.help, field.serial, field, rtfield.is_pointer, rtfield.is_self_pointer, rtfield.is_slice, rtfield.is_collection, points_to=points_to)
     rtfield.defn = defn
+
+    if rtklass == rt.doc:
+      setattr(self._doc, rtfield.serial, field.default())

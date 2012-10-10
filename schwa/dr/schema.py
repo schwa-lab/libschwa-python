@@ -192,16 +192,21 @@ class DocSchema(BaseSchema):
 
 
 class FieldSchema(BaseSchema):
-  __slots__ = ('_is_pointer', '_is_self_pointer', '_is_slice', '_points_to')
+  __slots__ = ('_is_pointer', '_is_self_pointer', '_is_slice', '_is_collection', '_points_to')
 
-  def __init__(self, name, help, serial, defn, is_pointer, is_self_pointer, is_slice, points_to=None):
+  def __init__(self, name, help, serial, defn, is_pointer, is_self_pointer, is_slice, is_collection, points_to=None):
     super(FieldSchema, self).__init__(name, help, serial, defn)
     self._is_pointer = is_pointer
     self._is_self_pointer = is_self_pointer
     self._is_slice = is_slice
+    self._is_collection = is_collection
     self._points_to = points_to  # StoreSchema
     if is_pointer and points_to is None:
       raise ValueError('is_pointer requires points_to to point to an AnnSchema instance')
+
+  @property
+  def is_collection(self):
+    return self._is_collection
 
   @property
   def is_pointer(self):
@@ -252,18 +257,18 @@ def _create_fields(ann_klass, s_ann, s_doc, stored_klasses):
   for attr, field in ann_klass._dr_fields.iteritems():
     field.resolve_klasses()
     if isinstance(field, Field):
-      s_field = FieldSchema(attr, field.help, field.serial, field, False, False, False)
+      s_field = FieldSchema(attr, field.help, field.serial, field, False, False, False, False)
     elif isinstance(field, (Pointer, Pointers)):
       points_to = _get_points_to(attr, field, s_doc, stored_klasses)
-      s_field = FieldSchema(attr, field.help, field.serial, field, True, False, False, points_to)
+      s_field = FieldSchema(attr, field.help, field.serial, field, True, False, False, isinstance(field, Pointers), points_to=points_to)
     elif isinstance(field, (SelfPointer, SelfPointers)):
-      s_field = FieldSchema(attr, field.help, field.serial, field, False, True, False)
+      s_field = FieldSchema(attr, field.help, field.serial, field, False, True, False, isinstance(field, SelfPointers))
     elif isinstance(field, Slice):
       if not field.is_byteslice():
         points_to = _get_points_to(attr, field, s_doc, stored_klasses)
-        s_field = FieldSchema(attr, field.help, field.serial, field, True, False, True, points_to)
+        s_field = FieldSchema(attr, field.help, field.serial, field, True, False, True, False, points_to=points_to)
       else:
-        s_field = FieldSchema(attr, field.help, field.serial, field, False, False, True)
+        s_field = FieldSchema(attr, field.help, field.serial, field, False, False, True, False)
     else:
       raise TypeError('Unknown type of field {0}'.format(field))
 

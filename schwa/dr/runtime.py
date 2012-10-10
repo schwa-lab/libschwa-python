@@ -3,15 +3,16 @@ __all__ = ['RTField', 'RTStore', 'RTAnn', 'RTManager', 'build_rt', 'merge_rt']
 
 
 class RTField(object):
-  __slots__ = ('defn', 'points_to', 'serial', 'field_id', 'is_slice', 'is_self_pointer')
+  __slots__ = ('defn', 'points_to', 'serial', 'field_id', 'is_slice', 'is_self_pointer', 'is_collection')
 
-  def __init__(self, field_id, serial, points_to, is_slice, is_self_pointer, defn=None):
+  def __init__(self, field_id, serial, points_to, is_slice, is_self_pointer, is_collection, defn=None):
     self.defn = defn  # FieldSchema
     self.points_to = points_to  # RTStore
     self.serial = serial
     self.field_id = field_id
     self.is_slice = is_slice
     self.is_self_pointer = is_self_pointer
+    self.is_collection = is_collection
 
   def is_lazy(self):
     return self.defn is None
@@ -82,7 +83,7 @@ def _merge_rtschema_fields(rtschema, ann_schema, rtstore_map):
       points_to = None
       if field_schema.is_pointer:
         points_to = rtstore_map[field_schema.points_to]
-      rtfield = RTField(field_id, field_schema.serial, points_to, field_schema.is_slice, field_schema.is_self_pointer, field_schema)
+      rtfield = RTField(field_id, field_schema.serial, points_to, field_schema.is_slice, field_schema.is_self_pointer, field_schema.is_collection, defn=field_schema)
       rtschema.fields.append(rtfield)
       field_id += 1
     else:
