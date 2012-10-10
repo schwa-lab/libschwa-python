@@ -51,9 +51,11 @@ class MetaBase(type):
 
       # remove the Store and BaseField objects from the set of class attributes so that they can be overwritten by instances of the class
       for key in fields:
-        del attrs[key]
+        if key in attrs:
+          del attrs[key]
       for key in stores:
-        del attrs[key]
+        if key in attrs:
+          del attrs[key]
 
     # construct the class
     klass = super(MetaBase, mklass).__new__(mklass, klass_name, bases, attrs)
