@@ -96,9 +96,14 @@ class TestCase(unittest.TestCase):
     self.assertSchemaEqual(Doc.schema(), reader.doc_schema)
 
   def assertSchemaEqual(self, s1, s2, sub_schemas=('klasses', 'stores', 'fields'), fields=('is_pointer', 'is_self_pointer', 'is_slice', 'is_collection', 'pointer_to')):
+    fields1 = {}
+    fields2 = {}
     for field in fields:
       if hasattr(s1, field):
-        self.assertEqual(getattr(s1, field), getattr(s2, field))
+        fields1[field] = getattr(s1, field)
+      if hasattr(s2, field):
+        fields2[field] = getattr(s2, field)
+    self.assertDictEqual(fields1, fields2)
 
     for sub_attr in sub_schemas:
       has_sub = hasattr(s1, sub_attr)
