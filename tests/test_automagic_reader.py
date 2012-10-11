@@ -84,3 +84,38 @@ class TestCase(unittest.TestCase):
     orig = orig.getvalue()
     rewritten = rewritten.getvalue()
     self.assertEqual(orig, rewritten)
+
+  def test_schema(self):
+    orig = cStringIO.StringIO()
+    write(orig)
+    orig.seek(0)
+
+    reader = dr.Reader(orig, automagic=True)
+    docs = list(reader)
+
+    self.assertSchemaEqual(Doc.schema(), reader.doc_schema)
+
+  def assertSchemaEqual(self, s1, s2, sub_schemas=('klasses', 'stores', 'fields'), fields=('is_pointer', 'is_self_pointer', 'is_slice', 'is_collection', 'pointer_to')):
+    for field in fields:
+      if hasattr(s1, field):
+        self.assertEqual(getattr(s1, field), getattr(s2, field))
+
+    for sub_attr in sub_schemas:
+      has_sub = hasattr(s1, sub_attr)
+      self.assertEqual(has_sub, hasattr(s2, sub_attr))
+      if not has_sub:
+        continue
+      
+      subs1 = self._schema_dict(getattr(s1, sub_attr))
+      subs2 = self._schema_dict(getattr(s2, sub_attr))
+      self.assertSetEqual(set(subs1.keys()), set(subs2.keys()))
+
+      for serial, sub1 in subs1.items():
+        self.assertSchemaEqual(sub1, subs2[serial])
+  
+  @staticmethod
+  def _schema_dict(schemas):
+    if callable(schemas):
+      # handles the annoying discrepancy between schema.klasses and schema.stores()
+      schemas = schemas()
+    return {obj.serial: obj for obj in schemas}
