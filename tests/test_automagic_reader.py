@@ -8,6 +8,7 @@ from schwa import dr
 class Token(dr.Ann):
   span = dr.Slice()
   norm = dr.Field()
+  empty = dr.Field()
 
 
 class Sent(dr.Ann):
@@ -18,6 +19,7 @@ class Doc(dr.Doc):
   tokens = dr.Store(Token)
   sents = dr.Store(Sent)
   adjectives = dr.Pointers(Token)
+  empty = dr.Field()
 
 
 def write(out):
