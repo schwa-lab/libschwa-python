@@ -33,6 +33,7 @@ class Writer(object):
       raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
     self._packer = msgpack.Packer()
 
+  @property
   def doc_schema(self):
     """Returns the DocSchema instance used/created during the writing process."""
     return self._doc_schema
