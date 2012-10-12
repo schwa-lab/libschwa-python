@@ -219,12 +219,12 @@ class Slice(BaseField):
   def from_wire(self, val, rtfield, cur_store, doc):
     if val is None:
       return None
-    return slice(val[0], val[1])
+    return slice(val[0], val[1] + val[0])
 
   def to_wire(self, obj, rtfield, cur_store, doc):
     if obj is None:
       return None
-    return (obj.start, obj.stop)
+    return (obj.start, obj.stop - obj.start)
 
 
 # =============================================================================
