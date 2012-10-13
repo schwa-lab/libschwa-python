@@ -55,10 +55,15 @@ class Reader(object):
       raise StopIteration()
     return self._doc
 
+  def read(self):
+    self._read_doc()
+    return self._doc
+
   def _read_doc(self):
     # read in the version number
-    version = self._unpacker.unpack()
-    if version is None:
+    try:
+      version = self._unpacker.unpack()
+    except StopIteration:
       self._doc = None
       return
 
