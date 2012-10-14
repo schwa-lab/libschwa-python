@@ -91,18 +91,18 @@ class AnnSchema(BaseSchema):
 
 
 class DocSchema(BaseSchema):
-  __slots__ = ('_fields', '_stores', '_stores_by_klass', 'klasses')
+  __slots__ = ('_fields', '_klasses', '_stores', '_stores_by_klass')
 
   def __init__(self, name, help, serial, defn):
     super(DocSchema, self).__init__(name, help, serial, defn)
     self._fields = {}
+    self._klasses = []
     self._stores = {}
     self._stores_by_klass = {}
-    self.klasses = []
 
   def __contains__(self, arg):
     if inspect.isclass(arg) and issubclass(arg, Ann):
-      for klass in self.klasses:
+      for klass in self._klasses:
         if klass.defn == arg:
           return True
       return False
@@ -113,7 +113,7 @@ class DocSchema(BaseSchema):
 
   def __getitem__(self, arg):
     if inspect.isclass(arg) and issubclass(arg, Ann):
-      for klass in self.klasses:
+      for klass in self._klasses:
         if klass.defn == arg:
           return klass
       raise ValueError('Class {0} was not found'.format(arg))
@@ -133,7 +133,7 @@ class DocSchema(BaseSchema):
   def add_klass(self, klass):
     if not isinstance(klass, AnnSchema):
       raise TypeError('argument must be an AnnSchema instance')
-    self.klasses.append(klass)
+    self._klasses.append(klass)
 
   def add_store(self, name, store):
     if not isinstance(store, StoreSchema):
@@ -145,7 +145,7 @@ class DocSchema(BaseSchema):
       self._stores_by_klass[store.stored_type.defn] = [store]
 
   def has_klass_by_serial(self, serial):
-    for klass in self.klasses:
+    for klass in self._klasses:
       if klass.serial == serial:
         return True
     return False
@@ -154,7 +154,7 @@ class DocSchema(BaseSchema):
     return name in self._stores
 
   def klass_by_serial(self, serial):
-    for klass in self.klasses:
+    for klass in self._klasses:
       if klass.serial == serial:
         return klass
 
@@ -171,6 +171,9 @@ class DocSchema(BaseSchema):
   def fields(self):
     return self._fields.itervalues()
 
+  def klasses(self):
+    return self._klasses
+
   def stores(self):
     return self._stores.itervalues()
 
@@ -183,7 +186,7 @@ class DocSchema(BaseSchema):
     for store in self.stores():
       store.add_to_argparse(group, pre)
 
-    for schema in self.klasses:
+    for schema in self._klasses:
       schema.add_to_argparse(parser, prefix)
 
   @staticmethod

@@ -125,7 +125,7 @@ def merge_rt(rt, doc_schema):
 
   # construct the RTAnn's
   rtann_map = {}  # { AnnSchema : RTAnn }
-  for ann_schema in doc_schema.klasses:
+  for ann_schema in doc_schema.klasses():
     rtschema = known_klasses.get(ann_schema.name)
     if rtschema is None:
       rtschema = RTAnn(klass_id, ann_schema.serial, ann_schema)
