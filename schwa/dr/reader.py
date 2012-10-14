@@ -14,55 +14,17 @@ from .schema import AnnSchema, DocSchema, FieldSchema, StoreSchema
 __all__ = ['Reader']
 
 
-class Reader(object):
-  __slots__ = ('_automagic', '_automagic_count', '_doc', '_doc_schema', '_unpacker')
-
+class RTReader(object):
+  __slots__ = ('_doc_schema',)
+  
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
-  def __init__(self, istream, doc_schema_or_doc=None, automagic=False):
-    """
-    @param istream A file-like object to read from
-    @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
-    @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
-    """
-    self._unpacker = msgpack.Unpacker(istream)
-    self._automagic = automagic
-    self._automagic_count = 0
-    if doc_schema_or_doc is None:
-      if not automagic:
-        raise ValueError('doc_schema_or_doc can only be None if automagic is True')
-      doc_klass = get_or_create_klass(self._automagic_count, 'Doc', is_doc=True)
-      self._doc_schema = doc_klass.schema()
-    elif isinstance(doc_schema_or_doc, DocSchema):
-      self._doc_schema = doc_schema_or_doc
-    elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
-      self._doc_schema = doc_schema_or_doc.schema()
-    else:
-      raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
+  def __init__(self, schema):
+    self._doc_schema = schema
 
-  @property
-  def doc_schema(self):
-    """Returns the DocSchema instance used/created during the reading process."""
-    return self._doc_schema
-
-  def __iter__(self):
-    return self
-
-  def next(self):
-    doc = self.read()
-    if doc is None:
-      raise StopIteration()
-    return doc
-
-  def read(self):
-    rt = self._read_headers()
-    if rt is None:
-      return
-    return self._instantiate(rt)
-
-  def _read_headers(self):
+  def __call__(self, unpacker):
     try:
-      version = self._unpacker.unpack()
+      version = unpacker.unpack()
     except StopIteration:
       return
     # validate wire protocol version
@@ -70,45 +32,14 @@ class Reader(object):
       raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, self.WIRE_VERSION))
 
     rt = RTManager()
-
-    # read headers
-    self._read_klasses(rt)
-    self._read_stores(rt)
+    self._read_klasses(rt, unpacker.unpack())
+    self._read_stores(rt, unpacker.unpack())
     self._backfill_pointer_fields(rt)
-    if self._automagic:
-      self._do_automagic(rt)
-    if self._automagic:
-      self._automagic_count += 1
-
     return rt
 
-  def _instantiate(self, rt):
-    # create the Doc instance and RTManager
-    doc = self._doc_schema.defn()
-    self._create_stores(rt, doc)
-
-    # read instances
-    self._read_doc_instance(rt, doc)
-    self._read_instances(rt, doc)
-    doc._dr_rt = rt
-    return doc
-
-  def _create_stores(self, rt, doc):
-    for rtstore in rt.doc.stores:
-      if rtstore.is_lazy():
-        continue
-      attr = rtstore.defn.name
-      if hasattr(doc, attr):
-        store = getattr(doc, attr)
-      else:
-        store = rtstore.defn.defn.default()
-        setattr(doc, attr, store)
-      store.create_n(rtstore.nelem)
-
-  def _read_klasses(self, rt):
+  def _read_klasses(self, rt, read):
     # read <klasses> ::= [ <klass> ]
     #        <klass> ::= ( <klass_name>, <fields> )
-    read = self._unpacker.unpack()
     for k, (klass_name, fields) in enumerate(read):
       # construct the RTAnn instance for the class
       if klass_name == '__meta__':
@@ -180,10 +111,9 @@ class Reader(object):
     if rt.doc is None:
       raise ReaderException('Did not read in a __meta__ class')
 
-  def _read_stores(self, rt):
+  def _read_stores(self, rt, read):
     # read <stores> ::= [ <store> ]
     #       <store> ::= ( <store_name>, <klass_id>, <store_nelem> )
-    read = self._unpacker.unpack()
     for s, (store_name, klass_id, nelem) in enumerate(read):
       # sanity check on the value of the klass_id
       if klass_id >= len(rt.klasses):
@@ -232,40 +162,18 @@ class Reader(object):
           # backfill
           field.points_to = rtstore
 
-  def _process_instance(self, rtschema, doc, instance, obj, store):
-    # <instance> ::= { <field_id> : <obj_val> }
-    for key, val in instance.iteritems():
-      rtfield = rtschema.fields[key]
-      if rtfield.is_lazy():
-        if obj._dr_lazy is None:
-          obj._dr_lazy = {}
-        obj._dr_lazy[key] = val
-      else:
-        field = rtfield.defn.defn
-        val = field.from_wire(val, rtfield, store, doc)
-        setattr(obj, rtfield.defn.name, val)
 
-  def _read_doc_instance(self, rt, doc):
-    # read the document instance <doc_instance> ::= <instances_nbytes> <instance>
-    self._unpacker.unpack()  # nbytes
-    instance = self._unpacker.unpack()
-    self._process_instance(rt.doc, doc, instance, doc, None)
+class AutomagicRTReader(RTReader):
+  _automagic_count = 0
 
-  def _read_instances(self, rt, doc):
-    # <instances_groups> ::= <instances_group>*
-    for rtstore in rt.doc.stores:
-      # <instances_group>  ::= <instances_nbytes> <instances>
-      self._unpacker.unpack()  # nbytes
-      instances = self._unpacker.unpack()
+  def __call__(self, unpacker):
+    rt = super(AutomagicRTReader, self).__call__(unpacker)
+    if not rt:
+      return
 
-      if rtstore.is_lazy():
-        rtstore.lazy = instances
-      else:
-        rtschema = rtstore.klass
-        store = getattr(doc, rtstore.defn.name)
-        for i, instance in enumerate(instances):
-          obj = store[i]
-          self._process_instance(rtschema, doc, instance, obj, store)
+    self._do_automagic(rt)
+    self._automagic_count += 1
+    return rt
 
   def _do_automagic(self, rt):
     for klass in rt.klasses:
@@ -314,3 +222,110 @@ class Reader(object):
       field = Field()
     defn = FieldSchema(rtfield.serial, field.help, field.serial, field, rtfield.is_pointer, rtfield.is_self_pointer, rtfield.is_slice, rtfield.is_collection, points_to=points_to)
     rtfield.defn = defn
+
+
+
+class Reader(object):
+  __slots__ = ('_doc_schema', '_unpacker', '_read_headers')
+
+  def __init__(self, istream, doc_schema_or_doc=None, automagic=False):
+    """
+    @param istream A file-like object to read from
+    @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
+    @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
+    """
+    self._unpacker = msgpack.Unpacker(istream)
+    if doc_schema_or_doc is None:
+      if not automagic:
+        raise ValueError('doc_schema_or_doc can only be None if automagic is True')
+      doc_klass = get_or_create_klass(0, 'Doc', is_doc=True)
+      self._doc_schema = doc_klass.schema()
+    elif isinstance(doc_schema_or_doc, DocSchema):
+      self._doc_schema = doc_schema_or_doc
+    elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
+      self._doc_schema = doc_schema_or_doc.schema()
+    else:
+      raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
+    if automagic:
+      self._read_headers = AutomagicRTReader(self._doc_schema)
+    else:
+      self._read_headers = RTReader(self._doc_schema)
+
+  @property
+  def doc_schema(self):
+    """Returns the DocSchema instance used/created during the reading process."""
+    return self._doc_schema
+
+  def __iter__(self):
+    return self
+
+  def next(self):
+    doc = self.read()
+    if doc is None:
+      raise StopIteration()
+    return doc
+
+  def read(self):
+    rt = self._read_headers(self._unpacker)
+    if rt is None:
+      return
+    return self._instantiate(rt)
+
+  def _instantiate(self, rt):
+    # create the Doc instance and RTManager
+    doc = self._doc_schema.defn()
+    self._create_stores(rt, doc)
+
+    # read instances
+    self._read_doc_instance(rt, doc)
+    self._read_instances(rt, doc)
+    doc._dr_rt = rt
+    return doc
+
+  def _create_stores(self, rt, doc):
+    for rtstore in rt.doc.stores:
+      if rtstore.is_lazy():
+        continue
+      attr = rtstore.defn.name
+      if hasattr(doc, attr):
+        store = getattr(doc, attr)
+      else:
+        store = rtstore.defn.defn.default()
+        setattr(doc, attr, store)
+      store.create_n(rtstore.nelem)
+
+  def _process_instance(self, rtschema, doc, instance, obj, store):
+    # <instance> ::= { <field_id> : <obj_val> }
+    for key, val in instance.iteritems():
+      rtfield = rtschema.fields[key]
+      if rtfield.is_lazy():
+        if obj._dr_lazy is None:
+          obj._dr_lazy = {}
+        obj._dr_lazy[key] = val
+      else:
+        field = rtfield.defn.defn
+        val = field.from_wire(val, rtfield, store, doc)
+        setattr(obj, rtfield.defn.name, val)
+
+  def _read_doc_instance(self, rt, doc):
+    # read the document instance <doc_instance> ::= <instances_nbytes> <instance>
+    self._unpacker.unpack()  # nbytes
+    instance = self._unpacker.unpack()
+    self._process_instance(rt.doc, doc, instance, doc, None)
+
+  def _read_instances(self, rt, doc):
+    # <instances_groups> ::= <instances_group>*
+    for rtstore in rt.doc.stores:
+      # <instances_group>  ::= <instances_nbytes> <instances>
+      self._unpacker.unpack()  # nbytes
+      instances = self._unpacker.unpack()
+
+      if rtstore.is_lazy():
+        rtstore.lazy = instances
+      else:
+        rtschema = rtstore.klass
+        store = getattr(doc, rtstore.defn.name)
+        for i, instance in enumerate(instances):
+          obj = store[i]
+          self._process_instance(rtschema, doc, instance, obj, store)
+
