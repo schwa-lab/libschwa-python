@@ -23,12 +23,13 @@ class RTField(object):
 
 
 class RTStore(object):
-  __slots__ = ('klass', 'serial', 'store_id', 'defn', 'lazy')
+  __slots__ = ('klass', 'serial', 'store_id', 'defn', 'lazy', 'nelem')
 
-  def __init__(self, store_id, serial, klass, defn=None, lazy=None):
+  def __init__(self, store_id, serial, klass, defn=None, lazy=None, nelem=None):
     self.klass = klass  # RTAnn
     self.serial = serial
     self.store_id = store_id
+    self.nelem = nelem
     self.defn = defn  # StoreSchema
     self.lazy = lazy
 

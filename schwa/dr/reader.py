@@ -25,7 +25,6 @@ class Reader(object):
     @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
     @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
     """
-    self._doc = None
     self._unpacker = msgpack.Unpacker(istream)
     self._automagic = automagic
     self._automagic_count = 0
@@ -50,50 +49,65 @@ class Reader(object):
     return self
 
   def next(self):
-    self._read_doc()
-    if self._doc is None:
+    doc = self.read()
+    if doc is None:
       raise StopIteration()
-    return self._doc
+    return doc
 
   def read(self):
-    self._read_doc()
-    return self._doc
+    rt = self._read_headers()
+    if rt is None:
+      return
+    return self._instantiate(rt)
 
-  def _read_doc(self):
-    # read in the version number
+  def _read_headers(self):
     try:
       version = self._unpacker.unpack()
     except StopIteration:
-      self._doc = None
       return
-
     # validate wire protocol version
-    if version != Reader.WIRE_VERSION:
-      raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, Reader.WIRE_VERSION))
+    if version != self.WIRE_VERSION:
+      raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, self.WIRE_VERSION))
 
-    # create the Doc instance and RTManager
-    doc = self._doc = self._doc_schema.defn()
-    doc._dr_rt = RTManager()
+    rt = RTManager()
 
     # read headers
-    self._read_klasses()
-    self._read_stores()
-    self._backfill_pointer_fields()
+    self._read_klasses(rt)
+    self._read_stores(rt)
+    self._backfill_pointer_fields(rt)
     if self._automagic:
-      self._do_automagic()
-
-    # read instances
-    self._read_doc_instance()
-    self._read_instances()
-
-    # increment automagic counter if used
+      self._do_automagic(rt)
     if self._automagic:
       self._automagic_count += 1
 
-  def _read_klasses(self):
+    return rt
+
+  def _instantiate(self, rt):
+    # create the Doc instance and RTManager
+    doc = self._doc_schema.defn()
+    self._create_stores(rt, doc)
+
+    # read instances
+    self._read_doc_instance(rt, doc)
+    self._read_instances(rt, doc)
+    doc._dr_rt = rt
+    return doc
+
+  def _create_stores(self, rt, doc):
+    for rtstore in rt.doc.stores:
+      if rtstore.is_lazy():
+        continue
+      attr = rtstore.defn.name
+      if hasattr(doc, attr):
+        store = getattr(doc, attr)
+      else:
+        store = rtstore.defn.defn.default()
+        setattr(doc, attr, store)
+      store.create_n(rtstore.nelem)
+
+  def _read_klasses(self, rt):
     # read <klasses> ::= [ <klass> ]
     #        <klass> ::= ( <klass_name>, <fields> )
-    rt = self._doc._dr_rt
     read = self._unpacker.unpack()
     for k, (klass_name, fields) in enumerate(read):
       # construct the RTAnn instance for the class
@@ -166,10 +180,9 @@ class Reader(object):
     if rt.doc is None:
       raise ReaderException('Did not read in a __meta__ class')
 
-  def _read_stores(self):
+  def _read_stores(self, rt):
     # read <stores> ::= [ <store> ]
     #       <store> ::= ( <store_name>, <klass_id>, <store_nelem> )
-    rt = self._doc._dr_rt
     read = self._unpacker.unpack()
     for s, (store_name, klass_id, nelem) in enumerate(read):
       # sanity check on the value of the klass_id
@@ -185,11 +198,9 @@ class Reader(object):
 
       # construct and keep track of RTStore
       if defn is None:
-        rtstore = RTStore(s, store_name, rt.klasses[klass_id], lazy=nelem)
+        rtstore = RTStore(s, store_name, rt.klasses[klass_id], nelem=nelem)
       else:
-        rtstore = RTStore(s, store_name, rt.klasses[klass_id], defn=defn)
-        store = getattr(self._doc, defn.name)
-        store.create_n(nelem)
+        rtstore = RTStore(s, store_name, rt.klasses[klass_id], nelem=nelem, defn=defn)
       rt.doc.stores.append(rtstore)
 
       # ensure that the stream store and the static store agree on the klass they're storing
@@ -201,8 +212,7 @@ class Reader(object):
         if store_stored_type != stored_klass_type:
           raise ReaderException('Store {0!r} points to {1} but the stream says it points to {2}.'.format(store_name, store_stored_type, stored_klass_type))
 
-  def _backfill_pointer_fields(self):
-    rt = self._doc._dr_rt
+  def _backfill_pointer_fields(self, rt):
     for klass in rt.klasses:
       for field in klass.fields:
         if field.is_pointer:
@@ -222,7 +232,7 @@ class Reader(object):
           # backfill
           field.points_to = rtstore
 
-  def _process_instance(self, rtschema, instance, obj, store):
+  def _process_instance(self, rtschema, doc, instance, obj, store):
     # <instance> ::= { <field_id> : <obj_val> }
     for key, val in instance.iteritems():
       rtfield = rtschema.fields[key]
@@ -232,18 +242,18 @@ class Reader(object):
         obj._dr_lazy[key] = val
       else:
         field = rtfield.defn.defn
-        val = field.from_wire(val, rtfield, store, self._doc)
+        val = field.from_wire(val, rtfield, store, doc)
         setattr(obj, rtfield.defn.name, val)
 
-  def _read_doc_instance(self):
+  def _read_doc_instance(self, rt, doc):
     # read the document instance <doc_instance> ::= <instances_nbytes> <instance>
     self._unpacker.unpack()  # nbytes
     instance = self._unpacker.unpack()
-    self._process_instance(self._doc._dr_rt.doc, instance, self._doc, None)
+    self._process_instance(rt.doc, doc, instance, doc, None)
 
-  def _read_instances(self):
+  def _read_instances(self, rt, doc):
     # <instances_groups> ::= <instances_group>*
-    for rtstore in self._doc._dr_rt.doc.stores:
+    for rtstore in rt.doc.stores:
       # <instances_group>  ::= <instances_nbytes> <instances>
       self._unpacker.unpack()  # nbytes
       instances = self._unpacker.unpack()
@@ -252,13 +262,12 @@ class Reader(object):
         rtstore.lazy = instances
       else:
         rtschema = rtstore.klass
-        store = getattr(self._doc, rtstore.defn.name)
+        store = getattr(doc, rtstore.defn.name)
         for i, instance in enumerate(instances):
           obj = store[i]
-          self._process_instance(rtschema, instance, obj, store)
+          self._process_instance(rtschema, doc, instance, obj, store)
 
-  def _do_automagic(self):
-    rt = self._doc._dr_rt
+  def _do_automagic(self, rt):
     for klass in rt.klasses:
       if klass.is_lazy():
         self._automagic_klass(klass)
@@ -279,11 +288,8 @@ class Reader(object):
   def _automagic_store(self, rtstore):
     ann_schema = rtstore.klass.defn
     store = Store(ann_schema.defn)
-    s = store.default()
-    setattr(self._doc, rtstore.serial, s)
     defn = StoreSchema(rtstore.serial, store.help, store.serial, store, ann_schema)
     rtstore.defn = defn
-    s.create_n(rtstore.lazy)
 
   def _automagic_field(self, rtfield, rtklass, rt):
     points_to = None
@@ -308,6 +314,3 @@ class Reader(object):
       field = Field()
     defn = FieldSchema(rtfield.serial, field.help, field.serial, field, rtfield.is_pointer, rtfield.is_self_pointer, rtfield.is_slice, rtfield.is_collection, points_to=points_to)
     rtfield.defn = defn
-
-    if rtklass == rt.doc:
-      setattr(self._doc, rtfield.serial, field.default())
