@@ -182,7 +182,7 @@ class AutomagicRTReader(RTReader):
     for klass in rt.klasses:
       for store in klass.stores:
         if store.is_lazy():
-          self._automagic_store(store)
+          self._automagic_store(store, rt.doc)
       for field in klass.fields:
         if field.is_lazy():
           self._automagic_field(field, klass, rt)
@@ -193,11 +193,12 @@ class AutomagicRTReader(RTReader):
     rtklass.defn = ann_schema
     self._doc_schema.add_klass(ann_schema)
 
-  def _automagic_store(self, rtstore):
+  def _automagic_store(self, rtstore, rtdoc):
     ann_schema = rtstore.klass.defn
     store = Store(ann_schema.defn)
     defn = StoreSchema(rtstore.serial, store.help, store.serial, store, ann_schema)
     rtstore.defn = defn
+    rtdoc.add_kwarg(rtstore.serial, store.default)
 
   def _automagic_field(self, rtfield, rtklass, rt):
     points_to = None
@@ -222,6 +223,7 @@ class AutomagicRTReader(RTReader):
       field = Field()
     defn = FieldSchema(rtfield.serial, field.help, field.serial, field, rtfield.is_pointer, rtfield.is_self_pointer, rtfield.is_slice, rtfield.is_collection, points_to=points_to)
     rtfield.defn = defn
+    rtklass.add_kwarg(rtfield.serial, field.default)
 
 
 
@@ -273,7 +275,7 @@ class Reader(object):
 
   def _instantiate(self, rt):
     # create the Doc instance and RTManager
-    doc = self._doc_schema.defn()
+    doc = self._doc_schema.defn(**rt.doc.build_kwargs())
     self._create_stores(rt, doc)
 
     # read instances
@@ -287,12 +289,9 @@ class Reader(object):
       if rtstore.is_lazy():
         continue
       attr = rtstore.defn.name
-      if hasattr(doc, attr):
-        store = getattr(doc, attr)
-      else:
-        store = rtstore.defn.defn.default()
-        setattr(doc, attr, store)
-      store.create_n(rtstore.nelem)
+      store = getattr(doc, attr)
+      for i in xrange(rtstore.nelem):
+        store.create(**rtstore.klass.build_kwargs())
 
   def _process_instance(self, rtschema, doc, instance, obj, store):
     # <instance> ::= { <field_id> : <obj_val> }

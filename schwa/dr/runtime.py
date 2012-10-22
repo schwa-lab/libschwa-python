@@ -38,14 +38,33 @@ class RTStore(object):
 
 
 class RTAnn(object):
-  __slots__ = ('serial', 'klass_id', 'fields', 'stores', 'defn')
+  __slots__ = ('serial', 'klass_id', 'fields', 'stores', '_init_kwargs', 'defn')
 
   def __init__(self, klass_id, serial, defn=None):
     self.serial = serial
     self.klass_id = klass_id
     self.fields = []
     self.stores = []
+    self._init_kwargs = {}
     self.defn = defn  # AnnSchema
+
+  def build_kwargs(self):
+    if not self._init_kwargs:
+      return {}
+    return {k: v() for k, v in self._init_kwargs.items()}
+
+  def add_kwarg(self, name, default_fn):
+    self._init_kwargs[name] = default_fn
+
+  def copy_to_schema(self):
+    if not self.defn:
+      return
+    for rt in self.fields:
+      if rt.defn:
+        self.defn.add_field(rt.serial, rt.defn)
+    for rt in self.stores:
+      if rt.defn:
+        self.defn.add_store(rt.serial, rt.defn)
 
   def is_lazy(self):
     return self.defn is None
@@ -57,6 +76,11 @@ class RTManager(object):
   def __init__(self):
     self.doc = None  # RTAnn
     self.klasses = []  # [ RTAnn ]
+
+  def copy_to_schema(self):
+    for klass in self.klasses:
+      klass.copy_to_schema()
+    return self.doc.defn
 
 
 ## =============================================================================
