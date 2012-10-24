@@ -13,6 +13,9 @@ class StoreList(list):
     r = super(StoreList, self).__repr__()
     return 'StoreList({0})'.format(r)
 
+  def clear(self):
+    del self[:]
+
   def create(self, **kwargs):
     obj = self._klass(**kwargs)
     self.append(obj)

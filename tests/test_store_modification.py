@@ -76,3 +76,11 @@ class TestDoc(unittest.TestCase):
 
     R = 'Cannot serialize pointer to .* as it is not not in any store'
     self.assertRaisesRegexp(WriterException, R, lambda: write_read(d, Doc))
+
+  def test_store_clear(self):
+    s = dr.StoreList(Foo)
+    self.assertEqual(len(s), 0)
+    s.create_n(5)
+    self.assertEqual(len(s), 5)
+    s.clear()
+    self.assertEqual(len(s), 0)
