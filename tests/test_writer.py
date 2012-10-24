@@ -227,7 +227,7 @@ class TestDocWithAYZ(unittest.TestCase):
     s = serialise(d, dschema)
 
     klass_ids = {}
-    for i, ann_schema in enumerate(dschema.klasses):
+    for i, ann_schema in enumerate(dschema.klasses()):
       klass_ids[ann_schema.serial] = i + 1
     store_ids = {}
     for i, store_schema in enumerate(dschema.stores()):
@@ -277,7 +277,7 @@ class TestDocWithAYZ(unittest.TestCase):
       'writer.Y': klass_Y,
       'writer.Z': klass_Z,
     }
-    for i, ann_schema in enumerate(dschema.klasses):
+    for i, ann_schema in enumerate(dschema.klasses()):
       correct.write(correct_klasses[ann_schema.serial].getvalue())
 
     correct.write('\x93')  # <stores>: 3-element array
