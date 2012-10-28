@@ -9,12 +9,12 @@
 #include "text_stream.h"
 
 #include <fstream>
+#include <memory>
 
 #include <schwa/_base.h>
 #include <schwa/tokenizer.h>
 
 #include <boost/exception/exception.hpp>
-#include <boost/scoped_ptr.hpp>
 
 namespace tok = schwa::tokenizer;
 
@@ -95,10 +95,10 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     return PyErr_Format(PyExc_ValueError, "tokenize() unknown bad byte error handler, %d given", errors);
 
   try {
-    boost::scoped_ptr<PyStream> dest(pyobj2dest(pydest, normalise));
+    std::unique_ptr<PyStream> dest(pyobj2dest(pydest, normalise));
     if (filename) {
       if (use_mmap) {
-        try{
+        try {
           tok.tokenize_mmap(*dest, filename, errors);
         }
         catch (boost::exception &e) {
