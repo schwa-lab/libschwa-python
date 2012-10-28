@@ -12,9 +12,8 @@
 #include <memory>
 
 #include <schwa/_base.h>
+#include <schwa/exception.h>
 #include <schwa/tokenizer.h>
-
-#include <boost/exception/exception.hpp>
 
 namespace io = schwa::io;
 namespace tok = schwa::tokenizer;
@@ -92,12 +91,7 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     std::unique_ptr<tok::PyStream> dest(pyobj2dest(pydest, normalise));
     if (filename) {
       if (use_mmap) {
-        try {
-          tok.tokenize_mmap(*dest, filename, errors);
-        }
-        catch (boost::exception &e) {
-          return PyErr_Format(PyExc_IOError, "tokenize() could not open file '%s' for reading with mmap", filename);
-        }
+        tok.tokenize_mmap(*dest, filename, errors);
       }
       else {
         std::ifstream stream(filename);
@@ -124,6 +118,10 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     return 0;
   }
   catch (tok::PyRaise &e) {
+    return 0;
+  }
+  catch (schwa::IOException &e) {
+    PyErr_SetString(PyExc_IOError, e.what());
     return 0;
   }
 }
