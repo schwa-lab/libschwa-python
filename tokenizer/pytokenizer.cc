@@ -16,6 +16,7 @@
 
 #include <boost/exception/exception.hpp>
 
+namespace io = schwa::io;
 namespace tok = schwa::tokenizer;
 
 
@@ -45,40 +46,33 @@ add_long_to_module(PyObject *mod, const char *name, long value) {
 }
 
 
-namespace schwa {
-namespace tokenizer {
-
-namespace {
-
-static PyStream *
+static tok::PyStream *
 pyobj2dest(PyObject *dest, bool normalise) {
   if ((void *)dest == (void *)&PyString_Type)
-    return new PyBytesStream(normalise);
+    return new tok::PyBytesStream(normalise);
   else if ((void *)dest == (void *)&PyUnicode_Type)
-    return new PyUnicodeStream(normalise);
+    return new tok::PyUnicodeStream(normalise);
   else if ((void *)dest == (void *)&PyList_Type)
-    return new PyListStream();
+    return new tok::PyListStream();
   else if ((void *)dest == (void *)&PyTuple_Type)
-    return new PyTupleStream();
+    return new tok::PyTupleStream();
   else if (PyCallable_Check(dest))
-    return new PyCallFuncStream(dest);
+    return new tok::PyCallFuncStream(dest);
   else
-    return new PyCallObjectStream(dest);
+    return new tok::PyCallObjectStream(dest);
 }
-
-}  // namespace
 
 
 PyObject *
 PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
-  Tokenizer &tok = self->tokenizer;
+  tok::Tokenizer &tok = self->tokenizer;
 
   PyObject *pysrc = 0;
   PyObject *pydest = (PyObject *)&PyString_Type;
   const char *filename = 0;
 
-  long buffer_size = BUFFER_SIZE;
-  int errors = ERROR_SKIP;
+  long buffer_size = tok::BUFFER_SIZE;
+  int errors = tok::ERROR_SKIP;
   int normalise = 1;
   int use_mmap = 0;
 
@@ -91,11 +85,11 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     return PyErr_Format(PyExc_TypeError, "tokenize() does not accept unicode objects, use unicode.encode('utf-8')");
   if (buffer_size <= 0)
     return PyErr_Format(PyExc_ValueError, "tokenize() buffer_size must be positive, %ld given", buffer_size);
-  if (errors < ERROR_SKIP || errors > ERROR_THROW)
+  if (errors < tok::ERROR_SKIP || errors > tok::ERROR_THROW)
     return PyErr_Format(PyExc_ValueError, "tokenize() unknown bad byte error handler, %d given", errors);
 
   try {
-    std::unique_ptr<PyStream> dest(pyobj2dest(pydest, normalise));
+    std::unique_ptr<tok::PyStream> dest(pyobj2dest(pydest, normalise));
     if (filename) {
       if (use_mmap) {
         try {
@@ -105,18 +99,18 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
           return PyErr_Format(PyExc_IOError, "tokenize() could not open file '%s' for reading with mmap", filename);
         }
       }
-      else{
+      else {
         std::ifstream stream(filename);
         if (!stream)
           return PyErr_Format(PyExc_IOError,"tokenize() could not open file '%s' for reading", filename);
-        tok.tokenize_stream(*dest, stream, static_cast<offset_type>(buffer_size), errors);
+        tok.tokenize_stream(*dest, stream, static_cast<tok::offset_type>(buffer_size), errors);
       }
     }
     else if (PyObject_CheckBuffer(pysrc)) {
       Py_buffer buffer;
       if (PyObject_GetBuffer(pysrc, &buffer, PyBUF_SIMPLE) != 0)
         return PyErr_Format(PyExc_ValueError, "tokenize() only supports simple buffer objects");
-      tok.tokenize(*dest, (char *)buffer.buf, static_cast<offset_type>(buffer.len), errors);
+      tok.tokenize(*dest, (char *)buffer.buf, static_cast<tok::offset_type>(buffer.len), errors);
       PyBuffer_Release(&buffer);
     }
     else if (PyFile_Check(pysrc)) {
@@ -125,21 +119,18 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     }
     return dest->get();
   }
-  catch(TokenError &e) {
-    PyErr_SetString(::TokenError, e.what());
+  catch (tok::TokenError &e) {
+    PyErr_SetString(TokenError, e.what());
     return 0;
   }
-  catch(PyRaise &e) {
+  catch (tok::PyRaise &e) {
     return 0;
   }
 }
 
-}  // namespace tokenizer
-}  // namespace schwa
-
 
 static PyMethodDef PyTokenizer_methods[] = {
-  {"tokenize", (PyCFunction)tok::PyTokenizer_tokenize, METH_VARARGS | METH_KEYWORDS,
+  {"tokenize", (PyCFunction)PyTokenizer_tokenize, METH_VARARGS | METH_KEYWORDS,
 "Identifies paragraph, sentence and token boundaries in (English) text or HTML,\n\
 using a rule-based lexer.\n\
 \n\
