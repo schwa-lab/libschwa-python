@@ -8,7 +8,7 @@ from .exceptions import ReaderException
 from .fields_core import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice, Store
 from .meta import Doc
 from .rtklasses import get_or_create_klass
-from .runtime import RTField, RTStore, RTAnn, RTManager
+from .runtime import RTManager, AutomagicRTManager
 from .schema import AnnSchema, DocSchema, FieldSchema, StoreSchema
 
 __all__ = ['Reader']
@@ -16,6 +16,7 @@ __all__ = ['Reader']
 
 class RTReader(object):
   __slots__ = ('_doc_schema',)
+  Manager = RTManager
   
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
@@ -31,7 +32,7 @@ class RTReader(object):
     if version != self.WIRE_VERSION:
       raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, self.WIRE_VERSION))
 
-    rt = RTManager()
+    rt = self.Manager()
     self._read_klasses(rt, unpacker.unpack())
     self._read_stores(rt, unpacker.unpack())
     self._backfill_pointer_fields(rt)
@@ -43,11 +44,11 @@ class RTReader(object):
     for k, (klass_name, fields) in enumerate(read):
       # construct the RTAnn instance for the class
       if klass_name == '__meta__':
-        rtschema = RTAnn(k, klass_name, self._doc_schema)
+        rtschema = rt.Ann(k, klass_name, self._doc_schema)
         rt.doc = rtschema
       else:
         ann_schema = self._doc_schema.klass_by_serial(klass_name)
-        rtschema = RTAnn(k, klass_name, ann_schema)
+        rtschema = rt.Ann(k, klass_name, ann_schema)
       rt.klasses.append(rtschema)
 
       # for each <fields> ::= [ <field> ]
@@ -83,7 +84,7 @@ class RTReader(object):
 
         # see if the read in field exists on the registered class's schema
         if rtschema.is_lazy():
-          rtfield = RTField(f, field_name, points_to, is_slice, is_self_pointer, is_collection)
+          rtfield = rt.Field(f, field_name, points_to, is_slice, is_self_pointer, is_collection)
         else:
           # try and find the field on the registered class
           defn = None
@@ -91,7 +92,7 @@ class RTReader(object):
             if fs.serial == field_name:
               defn = fs
               break
-          rtfield = RTField(f, field_name, points_to, is_slice, is_self_pointer, is_collection, defn=defn)
+          rtfield = rt.Field(f, field_name, points_to, is_slice, is_self_pointer, is_collection, defn=defn)
 
           # perform some sanity checks that the type of data on the stream is what we're expecting
           if defn is not None:
@@ -128,9 +129,9 @@ class RTReader(object):
 
       # construct and keep track of RTStore
       if defn is None:
-        rtstore = RTStore(s, store_name, rt.klasses[klass_id], nelem=nelem)
+        rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem)
       else:
-        rtstore = RTStore(s, store_name, rt.klasses[klass_id], nelem=nelem, defn=defn)
+        rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem, defn=defn)
       rt.doc.stores.append(rtstore)
 
       # ensure that the stream store and the static store agree on the klass they're storing
@@ -164,6 +165,7 @@ class RTReader(object):
 
 
 class AutomagicRTReader(RTReader):
+  Manager = AutomagicRTManager
   _automagic_count = 0
 
   def __call__(self, unpacker):

@@ -38,23 +38,17 @@ class RTStore(object):
 
 
 class RTAnn(object):
-  __slots__ = ('serial', 'klass_id', 'fields', 'stores', '_init_kwargs', 'defn')
+  __slots__ = ('serial', 'klass_id', 'fields', 'stores', 'defn')
 
   def __init__(self, klass_id, serial, defn=None):
     self.serial = serial
     self.klass_id = klass_id
     self.fields = []
     self.stores = []
-    self._init_kwargs = {}
     self.defn = defn  # AnnSchema
 
-  def build_kwargs(self):
-    if not self._init_kwargs:
-      return {}
-    return {k: v() for k, v in self._init_kwargs.items()}
-
-  def add_kwarg(self, name, default_fn):
-    self._init_kwargs[name] = default_fn
+  def build_kwargs(self, res={}):
+    return res
 
   def copy_to_schema(self):
     if not self.defn:
@@ -70,8 +64,25 @@ class RTAnn(object):
     return self.defn is None
 
 
+class AutomagicRTAnn(RTAnn):
+  __slots__ = ('_init_kwargs',)
+
+  def __init__(self, *args, **kwargs):
+    super(AutomagicRTAnn, self).__init__(*args, **kwargs)
+    self._init_kwargs = {}
+  
+  def build_kwargs(self):
+    return {k: v() for k, v in self._init_kwargs.items()}
+
+  def add_kwarg(self, name, default_fn):
+    self._init_kwargs[name] = default_fn
+
+
 class RTManager(object):
   __slots__ = ('doc', 'klasses')
+  Field = RTField
+  Ann = RTAnn
+  Store = RTStore
 
   def __init__(self):
     self.doc = None  # RTAnn
@@ -81,6 +92,11 @@ class RTManager(object):
     for klass in self.klasses:
       klass.copy_to_schema()
     return self.doc.defn
+
+
+class AutomagicRTManager(RTManager):
+  __slots__ = ()
+  Ann = AutomagicRTAnn
 
 
 ## =============================================================================
