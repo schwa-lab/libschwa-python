@@ -36,7 +36,8 @@ class TextTokenizer(object):
       span = slice(self.offset + start, self.offset + start + len(raw))
     else:
       span = None
-    norm = self.fix_token_norm(norm or raw)
+    norm = self.fix_token_norm(norm or raw).decode(ENC)
+    raw = raw.decode(ENC)
     tok = self.token_klass(span=span, raw=raw if norm != raw else None, norm=norm)
     self.doc.tokens.append(tok)
 
