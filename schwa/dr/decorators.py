@@ -317,7 +317,11 @@ class convert_slices(Decorator):
         self.set_new_slice(source, None)
         continue
 
-      start = self.get_target_slice(targets[start])
+      try:
+        start = self.get_target_slice(targets[start])
+      except IndexError:
+        # Have seen case where start == stop == len(targets)
+        self.set_new_slice(source, None)
       stop = self.get_target_slice(targets[stop - 1])
       try:
         self.set_new_slice(source, slice(start.start, stop.stop))
