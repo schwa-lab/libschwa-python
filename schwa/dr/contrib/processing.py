@@ -1,6 +1,6 @@
 # vim: set ts=2 et:
 import argparse
-import StringIO
+import io
 import sys
 import threading
 try:
@@ -21,8 +21,8 @@ def stream_coroutine(istream, ostream, doc_class=None, automagic=False):
 
 
 def zmq_coroutine(context, dealer_url, doc_class=None, automagic=False):
-  istream = StringIO()
-  ostream = StringIO()
+  istream = io.BytesIO()
+  ostream = io.BytesIO()
   reader = Reader(istream, doc_class, automagic)
   writer = Writer(ostream, reader.doc_schema)
   socket = context.socket(zmq.REP)
@@ -49,7 +49,7 @@ if zmq:
 
 
 def run_processor(process, args, doc_class=None, dealer_url='inproc://workers'):
-  if all(hasattr(args, a) for a in ('serve_url', 'worker_url')) and all(getattr(args, a) for a in ('serve_url', 'worker_url')):
+  if any(getattr(args, a, None) for a in ('serve_url', 'worker_url')):
     context = zmq.Context(1)
     if args.serve_url:
       clients = context.socket(zmq.ROUTER)
