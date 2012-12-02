@@ -21,22 +21,21 @@ def stream_coroutine(istream, ostream, doc_class=None, automagic=False):
 
 
 def zmq_coroutine(context, dealer_url, doc_class=None, automagic=False):
-  istream = io.BytesIO()
+  # FIXME: reduce overhead of reader/writer creation
   ostream = io.BytesIO()
-  reader = Reader(istream, doc_class, automagic)
-  writer = Writer(ostream, reader.doc_schema)
   socket = context.socket(zmq.REP)
   socket.connect(dealer_url)
   while True:
     msg = socket.recv()
-    istream.write(msg)
+    istream = io.BytesIO(msg)
     istream.seek(0)
+    reader = Reader(istream, doc_class, automagic)
+    writer = Writer(ostream, reader.doc_schema)
     for doc in reader:
       res = yield(doc)
       writer.write(res or doc)
     ostream.seek(0)
     socket.send(ostream.getvalue())
-    istream.truncate(0)
     ostream.truncate(0)
 
 
