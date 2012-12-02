@@ -127,7 +127,7 @@ class MetaBase(type):
 
 class Base(object):
   __metaclass__ = MetaBase
-  __slots__ = ('_dr_decorated_by', '_dr_lazy')
+  __slots__ = ('_dr_lazy', )
 
   def __init__(self, **kwargs):
     for name, field in self._dr_fields.iteritems():
@@ -157,7 +157,7 @@ class Ann(Base):
 
 
 class Doc(Base):
-  __slots__ = ('_dr_rt', )
+  __slots__ = ('_dr_rt', '_dr_decorated_by', )
 
   def __init__(self, **kwargs):
     super(Doc, self).__init__(**kwargs)

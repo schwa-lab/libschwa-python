@@ -93,6 +93,7 @@ class TestCase(unittest.TestCase):
     reader = dr.Reader(orig, automagic=True)
     docs = list(reader)
 
+    # The following works if reader.doc_schema is replaced with docs[0]._dr_rt.copy_to_schema()
     self.assertSchemaEqual(Doc.schema(), reader.doc_schema)
 
   def assertSchemaEqual(self, s1, s2, sub_schemas=('klasses', 'stores', 'fields'), fields=('is_pointer', 'is_self_pointer', 'is_slice', 'is_collection', 'pointer_to')):

@@ -23,12 +23,13 @@ class RTField(object):
 
 
 class RTStore(object):
-  __slots__ = ('klass', 'serial', 'store_id', 'defn', 'lazy')
+  __slots__ = ('klass', 'serial', 'store_id', 'defn', 'lazy', 'nelem')
 
-  def __init__(self, store_id, serial, klass, defn=None, lazy=None):
+  def __init__(self, store_id, serial, klass, defn=None, lazy=None, nelem=None):
     self.klass = klass  # RTAnn
     self.serial = serial
     self.store_id = store_id
+    self.nelem = nelem
     self.defn = defn  # StoreSchema
     self.lazy = lazy
 
@@ -46,16 +47,56 @@ class RTAnn(object):
     self.stores = []
     self.defn = defn  # AnnSchema
 
+  def build_kwargs(self, res={}):
+    return res
+
+  def copy_to_schema(self):
+    if not self.defn:
+      return
+    for rt in self.fields:
+      if rt.defn:
+        self.defn.add_field(rt.serial, rt.defn)
+    for rt in self.stores:
+      if rt.defn:
+        self.defn.add_store(rt.serial, rt.defn)
+
   def is_lazy(self):
     return self.defn is None
 
 
+class AutomagicRTAnn(RTAnn):
+  __slots__ = ('_init_kwargs',)
+
+  def __init__(self, *args, **kwargs):
+    super(AutomagicRTAnn, self).__init__(*args, **kwargs)
+    self._init_kwargs = {}
+  
+  def build_kwargs(self):
+    return {k: v() for k, v in self._init_kwargs.items()}
+
+  def add_kwarg(self, name, default_fn):
+    self._init_kwargs[name] = default_fn
+
+
 class RTManager(object):
   __slots__ = ('doc', 'klasses')
+  Field = RTField
+  Ann = RTAnn
+  Store = RTStore
 
   def __init__(self):
     self.doc = None  # RTAnn
     self.klasses = []  # [ RTAnn ]
+
+  def copy_to_schema(self):
+    for klass in self.klasses:
+      klass.copy_to_schema()
+    return self.doc.defn
+
+
+class AutomagicRTManager(RTManager):
+  __slots__ = ()
+  Ann = AutomagicRTAnn
 
 
 ## =============================================================================
