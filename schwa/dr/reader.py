@@ -1,5 +1,6 @@
 # vim: set ts=2 et:
 import inspect
+import io
 
 import msgpack
 
@@ -294,6 +295,11 @@ class Reader(object):
       for i in xrange(rtstore.nelem):
         store.create(**rtstore.klass.build_kwargs())
 
+  def _read_packed(self):
+    tmp = io.BytesIO()
+    self._unpacker.skip(tmp.write)
+    return tmp.getvalue()
+
   def _process_instance(self, rtschema, doc, instance, obj, store):
     # <instance> ::= { <field_id> : <obj_val> }
     for key, val in instance.iteritems():
@@ -317,14 +323,13 @@ class Reader(object):
     # <instances_groups> ::= <instances_group>*
     for rtstore in rt.doc.stores:
       # <instances_group>  ::= <instances_nbytes> <instances>
-      self._unpacker.unpack()  # nbytes
-      instances = self._unpacker.unpack()
+      nbytes = self._unpacker.unpack()
 
       if rtstore.is_lazy():
-        rtstore.lazy = instances
+        rtstore.lazy = self._unpacker.read_bytes(nbytes)
       else:
         rtschema = rtstore.klass
         store = getattr(doc, rtstore.defn.name)
-        for i, instance in enumerate(instances):
+        for i, instance in enumerate(self._unpacker.unpack()):
           obj = store[i]
           self._process_instance(rtschema, doc, instance, obj, store)

@@ -70,10 +70,12 @@ class Writer(object):
     packed = self._packer.pack(value)
     self._ostream.write(packed)
 
-  def _pack_prefixed(self, value):
-    packed = self._packer.pack(value)
+  def _write_prefixed(self, packed):
     self._pack(len(packed))
     self._ostream.write(packed)
+
+  def _pack_prefixed(self, value):
+     self._write_prefixed(self._packer.pack(value))
 
   def _index_stores(self, doc, rt):
     """Set _dr_index on each of the objects in the stores."""
@@ -133,7 +135,7 @@ class Writer(object):
       # // <store> ::= ( <store_name>, <type_id>, <store_nelem> )
       store_name = s.serial if s.is_lazy() else s.defn.serial
       klass_id = s.klass.klass_id
-      nelem = len(s.lazy) if s.is_lazy() else len(getattr(doc, s.defn.name))
+      nelem = s.nelem if s.is_lazy() else len(getattr(doc, s.defn.name))
       store = (store_name, klass_id, nelem)
       stores.append(store)
 
@@ -158,7 +160,7 @@ class Writer(object):
   def _write_instances(self, doc, rt):
     for rtstore in rt.doc.stores:
       if rtstore.is_lazy():
-        self._pack_prefixed(rtstore.lazy)
+        self._write_prefixed(rtstore.lazy)
       else:
         rtschema = rtstore.klass
         store = getattr(doc, rtstore.defn.name)
