@@ -84,3 +84,14 @@ class TestDoc(unittest.TestCase):
     self.assertEqual(len(s), 5)
     s.clear()
     self.assertEqual(len(s), 0)
+
+  def test_create_n(self):
+    d = Doc()
+
+    f1 = d.foos.create(label='x')
+    f2 = d.foos.create(label='y')
+    sl = d.foos.create_n(5, label='*')
+    self.assertEqual(len(d.foos), 7)
+    self.assertListEqual(['*'] * 5, [f.label for f in d.foos[sl]])
+    self.assertEqual(len(set(id(f) for f in d.foos[sl])), 5)
+
