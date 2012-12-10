@@ -148,10 +148,8 @@ class Writer(object):
         continue
       field = f.defn.defn
       val = getattr(obj, f.defn.name)
-      val = field.to_wire(val, f, store, doc)
-      if val is None:
-        continue
-      instance[f.field_id] = val
+      if field.should_write(val):
+        instance[f.field_id] = field.to_wire(val, f, store, doc)
     return instance
 
   def _write_doc_instance(self, doc, rt):

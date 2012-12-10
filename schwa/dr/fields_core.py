@@ -12,8 +12,6 @@ def _from_wire_pointer(val, store):
 
 
 def _to_wire_pointer(obj, store):
-  if obj is None:
-    return None
   if not hasattr(obj, '_dr_index'):
     raise WriterException('Cannot serialize a pointer which is not in a store ({0}).'.format(obj))
   if obj._dr_index is None:
@@ -30,8 +28,6 @@ def _from_wire_pointers(vals, store):
 
 
 def _to_wire_pointers(objs, store):
-  if not objs:
-    return None
   indices = []
   for obj in objs:
     if not hasattr(obj, '_dr_index'):
@@ -78,6 +74,9 @@ class BaseField(BaseAttr):
     @param doc the current Doc instance
     """
     raise NotImplementedError
+
+  def should_write(self, val):
+    return val is not None
 
   def to_wire(self, obj, rtfield, cur_store, doc):
     """
@@ -148,6 +147,9 @@ class Pointers(Pointer):
   def from_wire(self, vals, rtfield, cur_store, doc):
     return _from_wire_pointers(vals, getattr(doc, rtfield.points_to.defn.name))
 
+  def should_write(self, val):
+    return val
+
   def to_wire(self, objs, rtfield, cur_store, doc):
     return _to_wire_pointers(objs, getattr(doc, rtfield.points_to.defn.name))
 
@@ -182,6 +184,9 @@ class SelfPointers(SelfPointer):
 
   def from_wire(self, vals, rtfield, cur_store, doc):
     return _from_wire_pointers(vals, cur_store)
+
+  def should_write(self, val):
+    return val
 
   def to_wire(self, objs, rtfield, cur_store, doc):
     return _to_wire_pointers(objs, cur_store)
