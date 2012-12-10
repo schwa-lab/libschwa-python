@@ -21,9 +21,11 @@ class DateTime(Field):
 class Text(Field):
   __slots__ = ('encoding', )
 
-  def __init__(self, encoding='utf-8', **kwargs):
+  def __init__(self, encoding='utf-8', store_empty=False, **kwargs):
     super(Text, self).__init__(**kwargs)
     self.encoding = encoding
+    if not store_empty:
+        self.should_write = lambda val: val
 
   def from_wire(self, val, rtfield, cur_store, doc):
     if val is None:

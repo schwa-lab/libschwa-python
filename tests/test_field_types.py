@@ -16,6 +16,7 @@ class Event(dr.Ann):
 class String(dr.Ann):
   utf8  = dr.Text()
   utf32 = dr.Text('utf-32')
+  store_empty = dr.Text(store_empty=True)
 
 
 class Doc(dr.Doc):
@@ -59,3 +60,13 @@ class TestEncodedStringField(unittest.TestCase):
     self.assertTrue(isinstance(doc.strings[0].utf32, unicode))
     self.assertEqual(doc.strings[0].utf8, U)
     self.assertEqual(doc.strings[0].utf32, U)
+
+  def test_store_empty(self):
+    doc = Doc()
+    doc.strings.create(utf8=u'', store_empty=u'')
+    self.assertTrue(isinstance(doc.strings[0].utf8, unicode))
+    self.assertTrue(isinstance(doc.strings[0].store_empty, unicode))
+
+    doc = write_read(doc, Doc)
+    self.assertIsNone(doc.strings[0].utf8)
+    self.assertTrue(isinstance(doc.strings[0].store_empty, unicode))
