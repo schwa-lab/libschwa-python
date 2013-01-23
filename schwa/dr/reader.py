@@ -30,7 +30,7 @@ class RTReader(object):
       return
     # validate wire protocol version
     if version != self.WIRE_VERSION:
-      raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}'.format(version, self.WIRE_VERSION))
+      raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}. Ensure the input is not plain text.'.format(version, self.WIRE_VERSION))
 
     rt = self.Manager()
     self._read_klasses(rt, unpacker.unpack())
