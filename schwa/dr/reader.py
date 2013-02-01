@@ -17,7 +17,7 @@ __all__ = ['Reader']
 class RTReader(object):
   __slots__ = ('_doc_schema',)
   Manager = RTManager
-  
+
   WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
 
   def __init__(self, schema):
@@ -228,7 +228,6 @@ class AutomagicRTReader(RTReader):
     rtklass.add_kwarg(rtfield.serial, field.default)
 
 
-
 class Reader(object):
   __slots__ = ('_doc_schema', '_unpacker', '_read_headers')
 
@@ -238,7 +237,7 @@ class Reader(object):
     @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
     @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
     """
-    self._unpacker = msgpack.Unpacker(istream)
+    self._unpacker = msgpack.Unpacker(istream, use_list=True)
     if doc_schema_or_doc is None:
       if not automagic:
         raise ValueError('doc_schema_or_doc can only be None if automagic is True')
@@ -329,4 +328,3 @@ class Reader(object):
         for i, instance in enumerate(instances):
           obj = store[i]
           self._process_instance(rtschema, doc, instance, obj, store)
-
