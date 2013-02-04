@@ -46,9 +46,14 @@ class RTReader(object):
       if klass_name == '__meta__':
         rtschema = rt.Ann(k, klass_name, self._doc_schema)
         rt.doc = rtschema
+        required_fields = self._doc_schema.num_required_fields
       else:
         ann_schema = self._doc_schema.klass_by_serial(klass_name)
         rtschema = rt.Ann(k, klass_name, ann_schema)
+        if ann_schema is not None:
+          required_fields = ann_schema.num_required_fields
+        else:
+          required_fields = 0
       rt.klasses.append(rtschema)
 
       # for each <fields> ::= [ <field> ]
@@ -96,6 +101,10 @@ class RTReader(object):
 
           # perform some sanity checks that the type of data on the stream is what we're expecting
           if defn is not None:
+            if defn.is_read_prohibited:
+              raise ReaderException("Field {0!r} of class {1!r} is read-prohibited".format(field_name, klass_name))
+            if defn.is_read_required:
+              required_fields -= 1
             if is_pointer != defn.is_pointer:
               raise ReaderException("Field {0!r} of class {1!r} has IS_POINTER as {2} on the stream, but {3} on the class's field".format(field_name, klass_name, is_pointer, defn.is_pointer))
             if is_slice != defn.is_slice:
@@ -108,6 +117,14 @@ class RTReader(object):
         # add the field to the schema
         rtschema.fields.append(rtfield)
 
+      if required_fields:
+        if required_fields < 0:
+          raise ReaderException("Unexpected error reading class {0!r}: required field count dropped below zero ({1})".format(klass_name, required_fields))
+
+        required_serials = {fs.serial for fs in rtschema.defn.fields()}
+        found_serials = {rtfield.serial for rtfield in rtschema.fields}
+        raise ReaderException("Required fields {0!r} not read in class {1!r}".format(sorted(required_serials - found_serials), klass_name))
+
     # ensure we found a document class
     if rt.doc is None:
       raise ReaderException('Did not read in a __meta__ class')
@@ -115,6 +132,9 @@ class RTReader(object):
   def _read_stores(self, rt, read):
     # read <stores> ::= [ <store> ]
     #       <store> ::= ( <store_name>, <klass_id>, <store_nelem> )
+
+    required_stores = self._doc_schema.num_required_stores
+
     for s, (store_name, klass_id, nelem) in enumerate(read):
       # sanity check on the value of the klass_id
       if klass_id >= len(rt.klasses):
@@ -128,20 +148,29 @@ class RTReader(object):
           break
 
       # construct and keep track of RTStore
-      if defn is None:
-        rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem)
-      else:
-        rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem, defn=defn)
+      rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem, defn=defn)
       rt.doc.stores.append(rtstore)
 
       # ensure that the stream store and the static store agree on the klass they're storing
       if not rtstore.is_lazy():
         store_stored_type = defn.stored_type
+        if defn.is_read_prohibited:
+          raise ReaderException("Store {0!r} is read-prohibited".format(store_name))
+        if defn.is_read_required:
+          required_stores -= 1
         if rt.klasses[klass_id].is_lazy():
           raise ReaderException('Store {0!r} points to {1} but the store on the stream points to a lazy type.'.format(store_name, store_stored_type))
         stored_klass_type = rt.klasses[klass_id].defn
         if store_stored_type != stored_klass_type:
           raise ReaderException('Store {0!r} points to {1} but the stream says it points to {2}.'.format(store_name, store_stored_type, stored_klass_type))
+
+    if required_stores:
+      if required_stores < 0:
+        raise ReaderException("Unexpected error reading stores: required store count dropped below zero ({0})".format(required_stores))
+
+      required_serials = {ss.serial for ss in self._doc_schema.stores()}
+      found_serials = {rtstore.serial for rtstore in rt.doc.stores}
+      raise ReaderException("Required stores {0!r} not read".format(sorted(required_serials - found_serials)))
 
   def _backfill_pointer_fields(self, rt):
     for klass in rt.klasses:

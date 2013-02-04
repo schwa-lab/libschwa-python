@@ -74,6 +74,14 @@ class AnnSchema(BaseSchema):
     if not isinstance(field, FieldSchema):
       raise TypeError('argument must be a FieldSchema instance')
     self._fields[name] = field
+  
+  @property
+  def num_required_fields(self):
+    total = 0
+    for field in self.fields():
+      if field.is_read_required:
+        total += 1
+    return total
 
   def fields(self):
     return self._fields.itervalues()
@@ -177,6 +185,21 @@ class DocSchema(BaseSchema):
   def stores(self):
     return self._stores.itervalues()
 
+  @property
+  def num_required_fields(self):
+    return self.count_read_required('fields')
+
+  @property
+  def num_required_stores(self):
+    return self.count_read_required('stores')
+
+  def count_read_required(self, attr='fields'):
+    total = 0
+    for field in getattr(self, attr)():
+      if field.is_read_required:
+        total += 1
+    return total
+
   def add_to_argparse(self, parser, prefix='-'):
     pre = prefix + '-' + self.name
     group = parser.add_argument_group(self.name, self.help)
@@ -195,9 +218,9 @@ class DocSchema(BaseSchema):
 
 
 class FieldSchema(BaseSchema):
-  __slots__ = ('_is_pointer', '_is_self_pointer', '_is_slice', '_is_collection', '_points_to')
+  __slots__ = ('_is_pointer', '_is_self_pointer', '_is_slice', '_is_collection', '_points_to', '_read_assertion')
 
-  def __init__(self, name, help, serial, defn, is_pointer, is_self_pointer, is_slice, is_collection, points_to=None):
+  def __init__(self, name, help, serial, defn, is_pointer, is_self_pointer, is_slice, is_collection, points_to=None, read_assertion=None):
     super(FieldSchema, self).__init__(name, help, serial, defn)
     self._is_pointer = is_pointer
     self._is_self_pointer = is_self_pointer
@@ -206,6 +229,21 @@ class FieldSchema(BaseSchema):
     self._points_to = points_to  # StoreSchema
     if is_pointer and points_to is None:
       raise ValueError('is_pointer requires points_to to point to an AnnSchema instance')
+    self._read_assertion = read_assertion
+
+  @property
+  def is_read_required(self):
+    return self._read_assertion is True
+
+  def set_read_required(self):
+    self._read_assertion = True
+
+  @property
+  def is_read_prohibited(self):
+    return self._read_assertion is False
+
+  def set_read_prohibited(self):
+    self._read_assertion = False
 
   @property
   def is_collection(self):
@@ -229,11 +267,26 @@ class FieldSchema(BaseSchema):
 
 
 class StoreSchema(BaseSchema):
-  __slots__ = ('_stored_type',)
+  __slots__ = ('_stored_type', '_read_assertion')
 
-  def __init__(self, name, help, serial, defn, stored_type):
+  def __init__(self, name, help, serial, defn, stored_type, read_assertion=None):
     super(StoreSchema, self).__init__(name, help, serial, defn)
     self._stored_type = stored_type  # AnnSchema
+    self._read_assertion = read_assertion
+
+  @property
+  def is_read_required(self):
+    return self._read_assertion is True
+
+  def set_read_required(self):
+    self._read_assertion = True
+
+  @property
+  def is_read_prohibited(self):
+    return self._read_assertion is False
+
+  def set_read_prohibited(self):
+    self._read_assertion = False
 
   @property
   def stored_type(self):
