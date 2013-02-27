@@ -26,7 +26,7 @@ class RTReader(object):
   def __call__(self, unpacker):
     try:
       version = unpacker.unpack()
-    except StopIteration:
+    except msgpack.OutOfData:
       return
     # validate wire protocol version
     if version != self.WIRE_VERSION:
