@@ -8,7 +8,7 @@ ENC = 'utf-8'
 
 
 class TextTokenizer(object):
-  def __init__(self, document_klass, paragraph_klass, sentence_klass, token_klass, save_paragraphs=True, save_sentences=True, save_spans=True):
+  def __init__(self, document_klass, paragraph_klass, sentence_klass, token_klass, save_paragraphs=True, save_sentences=True, save_spans=True, save_between=False):
     self.save_paragraphs = save_paragraphs
     self.save_sentences = save_sentences
     self.save_spans = save_spans
@@ -17,13 +17,29 @@ class TextTokenizer(object):
     self.paragraph_klass = paragraph_klass
     self.sentence_klass = sentence_klass
     self.token_klass = token_klass
+    if save_between and not save_spans:
+        raise ValueError('save_between requires save_spans=True')
+    self.save_between = save_between
 
   def tokenize(self, text):
     assert isinstance(text, unicode)
     self.offset = 0
     self.doc = self.document_klass()
     self.tokenizer.tokenize(text.encode(ENC), dest=self)
+    if self.save_between:
+        self.mark_between(text.encode(ENC), self.doc.tokens)
     return self.doc
+
+  def mark_between(self, text, tokens):
+    prev_stop = 0
+    for tok in tokens:
+        tok.before = text[prev_stop:tok.span.start]
+        prev_stop = tok.span.stop
+    try:
+        tok.after = text[prev_stop:]
+    except NameError:
+        # No tokens
+        pass
 
   def unhandled(self, method_name):
     log.info('%r unhandled during tokenization' % method_name)
