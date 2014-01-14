@@ -10,7 +10,11 @@ class DateTime(Field):
   def from_wire(self, val, rtfield, cur_store, doc):
     if val is None:
       return None
-    return dateutil.parser.parse(val)
+    try:
+      return dateutil.parser.parse(val)
+    # Some parse errors manifest as Nones.
+    except TypeError:
+      return None
 
   def to_wire(self, obj, rtfield, cur_store, doc):
     if obj is None:
