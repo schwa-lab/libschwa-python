@@ -12,15 +12,23 @@ class DateTime(Field):
       return None
     try:
       return dateutil.parser.parse(val)
-    # Some parse errors manifest as Nones.
+    # Some parse errors manifest as Nones due to a bug in dateutil
+    # https://bugs.launchpad.net/dateutil/+bug/1247643
     except TypeError:
-      return None
+      return ValueError
 
   def to_wire(self, obj, rtfield, cur_store, doc):
     if obj is None:
       return None
     return obj.isoformat()
 
+class RelaxedDateTime(DateTime):
+  ''' Tolerates malformed timestamps. '''
+  def from_wire(self, val, rtfield, cur_store, doc):
+    try:
+      return super(RelaxedDateTime, self).from_wire(val, rtfield, cur_store, doc)
+    except ValueError:
+      return None
 
 class Text(Field):
   __slots__ = ('encoding', )
