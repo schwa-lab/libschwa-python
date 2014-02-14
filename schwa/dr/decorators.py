@@ -191,7 +191,7 @@ class materialize_slices(Decorator):
 
 
 class reverse_slices(Decorator):
-  """api/python/tests/test_decorators.py
+  """
   Where objects in source_store point (through slice_attr) to slices over
   objects in target_store, this decorates the target_store objects with any or
   all of: a pointer to a target_store object, its offset within the slice
@@ -199,6 +199,67 @@ class reverse_slices(Decorator):
 
   If slices are not mutually exclusive, each attribute will be a list whose
   items correspond to source annotations.
+
+  >>> from schwa import dr
+  >>> class Token(dr.Ann):
+  ...   norm = dr.Text()
+  >>> class NounPhrase(dr.Ann):
+  ...   span = dr.Slice(Token)
+  ...   def __repr__(self):
+  ...     return '<NP {}:{}>'.format(self.span.start, self.span.stop)
+  >>> class Doc(dr.Doc):
+  ...   tokens = dr.Store(Token)
+  ...   nps = dr.Store(NounPhrase)
+  ...
+  >>> def make_doc():
+  ...   doc = Doc()
+  ...   for norm in 'The cat sat on the mat in the yard .'.split():
+  ...     doc.tokens.create(norm=norm)
+  ...   for start, stop in [(0, 2), (4, 9), (7, 9)]:
+  ...     doc.nps.create(span=slice(start, stop))
+  ...   return doc
+  >>>
+  >>> # With mark_outside=False, the attribute is set iff covered by a NounPhrase:
+  >>> doc = make_doc()
+  >>> reverse_slices('nps', 'tokens', 'span', 'np', mark_outside=False)(doc)
+  >>> [hasattr(tok, 'np') for tok in doc.tokens]
+  [True, True, False, False, True, True, True, True, True, False]
+  >>> # some_token.np points to the covering NounPhrase
+  >>> doc.tokens[0].norm, doc.tokens[0].np
+  ('The', <NP 0:2>)
+  >>> # with mutex=True, only one covering slice is recorded
+  >>> doc.tokens[8].norm, doc.tokens[8].np
+  ('yard', <NP 7:9>)
+  >>>
+  >>> # With mark_outside=True, the attribute is None unless covered by a NounPhrase:
+  >>> doc = make_doc()
+  >>> reverse_slices('nps', 'tokens', 'span', 'np', mark_outside=True)(doc)
+  >>> [tok.np is not None for tok in doc.tokens]
+  [True, True, False, False, True, True, True, True, True, False]
+  >>>
+  >>> # With mutex=False, a list of covering NPs is stored, and mark_outside stores an empty list
+  >>> doc = make_doc()
+  >>> reverse_slices('nps', 'tokens', 'span', 'nps', mutex=False, mark_outside=True)(doc)
+  >>> doc.tokens[0].nps
+  [<NP 0:2>]
+  >>> doc.tokens[2].nps
+  []
+  >>> doc.tokens[8].nps
+  [<NP 4:9>, <NP 7:9>]
+  >>>
+  >>> # With offset_attr or roffset_attr the position of the covered token is stored
+  >>> # This allows us to know if the token is at the start or end of a phrase, for instance
+  >>> doc = make_doc()
+  >>> reverse_slices('nps', 'tokens', 'span', 'np',
+  ...                offset_attr='np_offset', roffset_attr='np_roffset',
+  ...                all_attr='np_data', mutex=False, mark_outside=True)(doc)
+  >>> [tok.np_offset for tok in doc.tokens]
+  [[0], [1], [], [], [0], [1], [2], [3, 0], [4, 1], []]
+  >>> [tok.np_roffset for tok in doc.tokens]
+  [[1], [0], [], [], [4], [3], [2], [1, 1], [0, 0], []]
+  >>> # The all_attr stores a tuple of pointer and offset information
+  >>> doc.tokens[8].np_data
+  [(<NP 4:9>, 4, 0), (<NP 7:9>, 1, 0)]
   """
 
   def __init__(self, source_store, target_store, slice_attr, pointer_attr=None, offset_attr=None, roffset_attr=None, all_attr=None, mutex=True, mark_outside=False):
