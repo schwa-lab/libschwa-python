@@ -181,7 +181,6 @@ class SliceDecoratorsTest(TestCase):
     ]
 
     for i, ss in enumerate(self.doc.super_slices):
-      print 'SuperSlice', i
       self.assertEqual(ss.myannot_span, EXPECTED[i])
     self.assertEqual(i, 3)
 
@@ -385,7 +384,6 @@ class GraphDecoratorTest(TestCase):
     }
 
     for a in self.doc.annots:
-      print a.field, a.height, height_aggregate
       exp_depth, exp_height = EXPECTED[a.field]
       self.assertEqual(exp_depth, a.depth)
       self.assertEqual(exp_height, a.height)
