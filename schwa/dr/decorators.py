@@ -6,9 +6,20 @@ from operator import attrgetter
 import itertools
 from types import StringTypes, TupleType
 
+try:
+  import pyximport
+  pyximport.install()
+  import _decorators
+except ImportError:
+  _decorators = None
+
 from .decoration import Decorator
 
 __all__ = ['add_prev_next', 'build_index', 'build_multi_index', 'materialize_slices', 'reverse_slices', 'find_contained_slices', 'convert_slices', 'reverse_pointers']
+
+
+def _all_string_or_none(*args):
+  return all(arg is None or isinstance(arg, StringTypes) for arg in args)
 
 
 def _attrsetter(attr):
@@ -108,10 +119,17 @@ class add_prev_next(Decorator):
     self.set_next = _attrsetter(next_attr)
     self.set_index = _attrsetter(index_attr)
     self._set_affected_fields((store, prev_attr), (store, next_attr), (store, index_attr))
+    if _decorators is not None and _all_string_or_none(prev_attr, next_attr, index_attr):
+      self._fast = partial(_decorators.add_prev_next, prev_attr, next_attr, index_attr)
 
   def decorate(self, doc):
+    store = self.get_store(doc)
+    if hasattr(self, '_fast') and isinstance(store, list):
+      self._fast(store)
+      return
+
     prev = None
-    for i, item in enumerate(self.get_store(doc)):
+    for i, item in enumerate(store):
       self.set_prev(item, prev)
       self.set_index(item, i)
       if prev is not None:
@@ -181,10 +199,17 @@ class materialize_slices(Decorator):
     self.slice_attr = slice_attr
     self.deref_attr = deref_attr
     self._set_affected_fields((source_store, deref_attr))
+    if _decorators and _all_string_or_none(slice_attr, deref_attr):
+      self._fast = partial(_decorators.materialize_slices, slice_attr, deref_attr)
 
   def decorate(self, doc):
     store = self.get_target_store(doc)
-    for obj in self.get_source_store(doc):
+    sources = self.get_source_store(doc)
+    if hasattr(self, '_fast') and isinstance(store, list) and isinstance(sources, list):
+      self._fast(sources, store)
+      return
+
+    for obj in sources:
       span = getattr(obj, self.slice_attr)
       if span is not None:
         setattr(obj, self.deref_attr, store[span])
@@ -278,8 +303,17 @@ class reverse_slices(Decorator):
     self.mark_outside = mark_outside
     self._set_affected_fields((target_store, pointer_attr), (target_store, offset_attr), (target_store, roffset_attr), (target_store, all_attr))
 
+    if _decorators is not None and _all_string_or_none(slice_attr, pointer_attr, offset_attr, roffset_attr, all_attr):
+      self._fast = partial(_decorators.reverse_slices, slice_attr,
+                           pointer_attr, offset_attr, roffset_attr, all_attr,
+                           mutex, mark_outside)
+
   def decorate(self, doc):
+    source_items = self.get_source_store(doc)
     target_items = self.get_target_store(doc)
+    if hasattr(self, '_fast') and isinstance(source_items, list) and isinstance(target_items, list):
+      self._fast(source_items, target_items)
+      return
 
     if self.mark_outside:
       for target in target_items:
@@ -288,7 +322,7 @@ class reverse_slices(Decorator):
         self.set_roffset.default(target, None)
         self.set_all.default(target, (None, None, None))
 
-    for source in self.get_source_store(doc):
+    for source in source_items:
       span = getattr(source, self.slice_attr)
       if span is None:
         continue
@@ -409,13 +443,21 @@ class reverse_pointers(Decorator):
     self.set_rev = setter(rev_attr)
     self.mark_outside = mark_outside
     self._set_affected_fields((target_store, rev_attr))
+    if _decorators and _all_string_or_none(pointer_attr, rev_attr):
+        self._fast = partial(_decorators.reverse_pointers, pointer_attr, rev_attr, mutex, mark_outside)
 
   def decorate(self, doc):
+    sources = self.get_source_store(doc)
+    targets = self.get_target_store(doc)
+    if hasattr(self, '_fast') and isinstance(sources, list) and isinstance(targets, list):
+      self._fast(sources, targets)
+      return
+
     if self.mark_outside:
-      for target in self.get_target_store(doc):
+      for target in targets:
         self.set_rev.default(target, None)
 
-    for source in self.get_source_store(doc):
+    for source in sources:
       target = getattr(source, self.pointer_attr)
       if target is None:
         continue
@@ -424,6 +466,7 @@ class reverse_pointers(Decorator):
           self.set_rev(target_item, source)
       else:
         self.set_rev(target, source)
+
 
 class mark_depth(Decorator):
   """
