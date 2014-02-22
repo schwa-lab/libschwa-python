@@ -460,7 +460,6 @@ class mark_depth(Decorator):
       children = [children]
     for child in children:
       ch_height = self._decorate(child, depth + 1)
-      print 'Setting height ', obj.field, 'via', child.field, ':', ch_height + 1
       height = self.set_height(obj, ch_height + 1)
     return height
 
