@@ -114,10 +114,10 @@ class add_prev_next(Decorator):
     for i, item in enumerate(self.get_store(doc)):
       self.set_prev(item, prev)
       self.set_index(item, i)
-      if prev:
+      if prev is not None:
         self.set_next(prev, item)
       prev = item
-    if prev:
+    if prev is not None:
       self.set_next(prev, None)
 
 
@@ -290,7 +290,7 @@ class reverse_slices(Decorator):
 
     for source in self.get_source_store(doc):
       span = getattr(source, self.slice_attr)
-      if not span:
+      if span is None:
         continue
       n = span.stop - span.start
       for i, target in enumerate(target_items[span]):
@@ -417,7 +417,7 @@ class reverse_pointers(Decorator):
 
     for source in self.get_source_store(doc):
       target = getattr(source, self.pointer_attr)
-      if not target:
+      if target is None:
         continue
       if isinstance(target, list):
         for target_item in target:
