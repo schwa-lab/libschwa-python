@@ -5,7 +5,7 @@ import shlex
 import subprocess
 
 from distutils import log
-from distutils.core import Extension, setup
+from setuptools import Extension, setup
 
 VERSION = open(os.path.join(os.path.dirname(__file__), 'VERSION')).read().strip()
 
@@ -87,8 +87,8 @@ setup(
         'schwa.dr.contrib.tokenizers',
     ],
     ext_modules=[tokenizer_ext()],
-    requires=[
-        'msgpack_python (>= 0.3)',
-        'python_dateutil',
+    install_requires=[
+        'msgpack-python >= 0.3',
+        'python-dateutil',
     ],
 )
