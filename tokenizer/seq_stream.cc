@@ -11,12 +11,6 @@ namespace tokenizer {
 // PySeqStream
 // ============================================================================
 PySeqStream::~PySeqStream(void) {
-  //for (PyVector::iterator it = _paragraphs.begin(); it != _paragraphs.end(); ++it)
-    //Py_DECREF(*it);
-  //for (PyVector::iterator it = _sentences.begin(); it != _sentences.end(); ++it)
-    //Py_DECREF(*it);
-  //for (PyVector::iterator it = _tokens.begin(); it != _tokens.end(); ++it)
-    //Py_DECREF(*it);
   for (PyObject *obj : _paragraphs)
     Py_DECREF(obj);
   for (PyObject *obj : _sentences)

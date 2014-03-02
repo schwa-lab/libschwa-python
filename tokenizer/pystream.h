@@ -7,6 +7,7 @@
 #include <schwa/_base.h>
 #include <schwa/tokenizer/stream.h>
 
+
 namespace schwa {
   namespace tokenizer {
 
@@ -18,7 +19,7 @@ namespace schwa {
       virtual PyObject *get(void) = 0;
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyStream);
     };
 
   }

@@ -236,6 +236,9 @@ inittokenizer(void) {
 
   add_to_module(m, "Tokenizer", (PyObject *)&PyTokenizerType);
 
+  // This cast from (const char *) to (char *) is actually safe. The implementation of
+  // PyErr_NewException only ever uses this parameter as arguments to other functions who use it as
+  // a (const char *).
   TokenError = PyErr_NewException((char *)"tokenizer.TokenError", 0, 0);
   add_to_module(m, "TokenError", TokenError);
 

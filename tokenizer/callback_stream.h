@@ -7,6 +7,7 @@
 #include <schwa/_base.h>
 #include "pystream.h"
 
+
 namespace schwa {
   namespace tokenizer {
 
@@ -46,7 +47,7 @@ namespace schwa {
       void end_document(void) override { call("end_document"); }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyCallObjectStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyCallObjectStream);
     };
 
 
@@ -85,7 +86,7 @@ namespace schwa {
       void end_document(void) override { call("end_document"); }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyCallFuncStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyCallFuncStream);
     };
 
   }

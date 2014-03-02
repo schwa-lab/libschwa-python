@@ -10,6 +10,7 @@
 #include <schwa/tokenizer/text_stream.h>
 #include "pystream.h"
 
+
 namespace schwa {
   namespace tokenizer {
 
@@ -52,7 +53,7 @@ namespace schwa {
       void end_document(void) override { _delegate.end_document(); }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyTextStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyTextStream);
     };
 
 
@@ -62,7 +63,7 @@ namespace schwa {
       virtual ~PyBytesStream(void) { }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyBytesStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyBytesStream);
     };
 
 
@@ -74,7 +75,7 @@ namespace schwa {
       PyObject *get(void) override;
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyUnicodeStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyUnicodeStream);
     };
 
   }

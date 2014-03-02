@@ -13,7 +13,8 @@
 namespace schwa {
   namespace tokenizer {
 
-    typedef std::vector<PyObject *> PyVector;
+    using PyVector = std::vector<PyObject *>;
+
 
     class PySeqStream : public PyStream {
     protected:
@@ -51,7 +52,7 @@ namespace schwa {
       virtual void end_document(void) override { }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PySeqStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PySeqStream);
     };
 
 
@@ -64,7 +65,7 @@ namespace schwa {
       virtual ~PyListStream(void) { }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyListStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyListStream);
     };
 
 
@@ -77,7 +78,7 @@ namespace schwa {
       virtual ~PyTupleStream(void) { }
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyTupleStream);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyTupleStream);
     };
 
   }

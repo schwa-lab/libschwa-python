@@ -7,6 +7,7 @@
 #include <schwa/_base.h>
 #include <schwa/io/file_source.h>
 
+
 namespace schwa {
   namespace io {
 
@@ -19,7 +20,7 @@ namespace schwa {
       virtual ~PyFileSource(void);
 
     private:
-      DISALLOW_COPY_AND_ASSIGN(PyFileSource);
+      SCHWA_DISALLOW_COPY_AND_ASSIGN(PyFileSource);
     };
 
   }
