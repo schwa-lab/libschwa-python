@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for d in schwa tokenizer; do
+  find ${d} \( -name '*.py' -or -name '*.cc' -or -name '*.h' \) | sort | xargs egrep -n -H --color "${@}"
+done

@@ -1,39 +1,72 @@
 # vim: set et nosi ai ts=2 sts=2 sw=2:
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function, unicode_literals
 import os
-import sys
+import shlex
+import subprocess
 
-from setuptools import Extension, setup
+from distutils import log
+from distutils.core import Extension, setup
 
-IS_DARWIN = sys.platform == 'darwin'
 VERSION = open(os.path.join(os.path.dirname(__file__), 'VERSION')).read().strip()
 
 
-extra_compile_args = ['-std=c++11']
-if IS_DARWIN:
-  extra_compile_args.append('-stdlib=libc++')
+def pkg_config(*args):
+  try:
+    output = subprocess.check_output(('pkg-config',) + args).decode('utf-8')
+  except subprocess.CalledProcessError:
+    return None
+  else:
+    return shlex.split(output)
 
-tokenizer = Extension(
-    'schwa.tokenizer',
-    language='c++',
-    extra_compile_args=extra_compile_args,
-    include_dirs=['tokenizer'],
-    libraries=['schwa'],
-    sources=[
-        'tokenizer/callback_stream.cc',
-        'tokenizer/pyfile_source.cc',
-        'tokenizer/pytokenizer.cc',
-        'tokenizer/seq_stream.cc',
-        'tokenizer/text_stream.cc',
-    ]
-)
+
+def tokenizer_ext():
+  extra_compile_args = []
+  extra_link_args = []
+  include_dirs = ['tokenizer']
+  library_dirs = []
+  libraries = []
+
+  # Try and find out if libschwa is installed on the system, and if so, split off the compiler
+  # flags into their appropriate sections of the Extension object.
+  if pkg_config('--modversion', 'libschwa') is not None:
+    for arg in pkg_config('--cflags', 'libschwa'):
+      if arg.startswith('-I'):
+        include_dirs.append(arg[2:])
+      else:
+        extra_compile_args.append(arg)
+    for arg in pkg_config('--libs', 'libschwa'):
+      if arg.startswith('-L'):
+        library_dirs.append(arg[2:])
+      elif arg.startswith('-l'):
+        libraries.append(arg[2:])
+      else:
+        extra_link_args.append(arg)
+  else:
+    log.error('Could not find an installed version of libschwa. Call to `pkg-config --modversion libschwa` failed. Compilation will most likely fail.')
+    libraries.append('schwa')
+
+  return Extension(
+      'schwa.tokenizer',
+      language='c++',
+      extra_compile_args=extra_compile_args,
+      extra_link_args=extra_link_args,
+      include_dirs=include_dirs,
+      library_dirs=library_dirs,
+      libraries=libraries,
+      sources=[
+          'tokenizer/callback_stream.cc',
+          'tokenizer/pyfile_source.cc',
+          'tokenizer/pytokenizer.cc',
+          'tokenizer/seq_stream.cc',
+          'tokenizer/text_stream.cc',
+      ]
+  )
 
 
 setup(
-    name='schwa',
+    name='libschwa-python',
     version=VERSION,
-    description='Python bindings of libschwa',
+    description='Schwa Lab NLP tools',
     author='Schwa Lab',
     author_email='schwa-lab@it.usyd.edu.au',
     maintainer='Tim Dawborn',
@@ -53,9 +86,9 @@ setup(
         'schwa.dr.contrib.writers',
         'schwa.dr.contrib.tokenizers',
     ],
-    ext_modules=[tokenizer],
-    install_requires=[
-        'msgpack-python >= 0.3',
-        'python-dateutil',
+    ext_modules=[tokenizer_ext()],
+    requires=[
+        'msgpack_python (>= 0.3)',
+        'python_dateutil',
     ],
 )

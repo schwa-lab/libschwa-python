@@ -1,0 +1,9 @@
+# Vim swap files.
+.*.sw[opq]
+
+# Compiled files.
+*.pyc
+__pycache__
+
+# Things produced by setup.py.
+/build
