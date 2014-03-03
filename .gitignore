@@ -7,3 +7,5 @@ __pycache__
 
 # Things produced by setup.py.
 /build
+/libschwa_python.egg-info
+/schwa/tokenizer.so

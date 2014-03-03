@@ -55,10 +55,9 @@ def tokenizer_ext():
       libraries=libraries,
       sources=[
           'tokenizer/callback_stream.cc',
-          'tokenizer/pyfile_source.cc',
-          'tokenizer/pytokenizer.cc',
           'tokenizer/seq_stream.cc',
           'tokenizer/text_stream.cc',
+          'tokenizer/module.cc',
       ]
   )
 

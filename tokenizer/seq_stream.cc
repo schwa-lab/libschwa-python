@@ -21,7 +21,7 @@ PySeqStream::~PySeqStream(void) {
 
 
 void
-PySeqStream::add(Type type, const char *raw, offset_type begin, offset_type len, const char *norm) {
+PySeqStream::add(Type type, const char *raw, size_t begin, size_t len, const char *norm) {
   const Py_ssize_t pybegin = begin;
   const Py_ssize_t pylen = len;
   PyObject *tuple = Py_BuildValue("ns#s", pybegin, raw, pylen, norm);
@@ -30,7 +30,7 @@ PySeqStream::add(Type type, const char *raw, offset_type begin, offset_type len,
 
 
 PyObject *
-PySeqStream::get(void) {
+PySeqStream::return_value(void) {
   PyObject *seq = vector2seq(_paragraphs);
   _tokens.resize(0);
   _sentences.resize(0);

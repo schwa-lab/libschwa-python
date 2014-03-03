@@ -14,23 +14,22 @@
 namespace schwa {
   namespace tokenizer {
 
-    // the multiple inheritance option is a dog in C++
+    // The multiple inheritance option is a dog in C++.
     class PyTextStream : public PyStream {
     protected:
       std::ostringstream _out;
       TextStream _delegate;
 
-    public:
       PyTextStream(bool normalise) : _delegate(_out, normalise) { }
+
+    public:
       virtual ~PyTextStream(void) { }
 
-      virtual PyObject *get(void) override;
-
-      void add(Type type, const char *raw, offset_type begin, offset_type len, const char *norm=0) override {
+      void add(Type type, const char *raw, size_t begin, size_t len, const char *norm=nullptr) override {
         _delegate.add(type, raw, begin, len, norm);
       }
 
-      void error(const char *raw, offset_type begin, offset_type len) override {
+      void error(const char *raw, size_t begin, size_t len) override {
         _delegate.error(raw, begin, len);
       }
 
@@ -62,6 +61,8 @@ namespace schwa {
       PyBytesStream(bool normalise) : PyTextStream(normalise) { }
       virtual ~PyBytesStream(void) { }
 
+      virtual PyObject *return_value(void) override;
+
     private:
       SCHWA_DISALLOW_COPY_AND_ASSIGN(PyBytesStream);
     };
@@ -72,7 +73,7 @@ namespace schwa {
       PyUnicodeStream(bool normalise) : PyTextStream(normalise) { }
       virtual ~PyUnicodeStream(void) { }
 
-      PyObject *get(void) override;
+      PyObject *return_value(void) override;
 
     private:
       SCHWA_DISALLOW_COPY_AND_ASSIGN(PyUnicodeStream);
