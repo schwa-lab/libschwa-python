@@ -311,9 +311,9 @@ _inittokenizer(void) {
 
 PyMODINIT_FUNC
 #ifdef IS_PY3K
-inittokenizer(void) {
-#else
 PyInit_tokenizer(void) {
+#else
+inittokenizer(void) {
 #endif
   PyObject *const m = _inittokenizer();
   if (m == nullptr && PyErr_Occurred()) {
