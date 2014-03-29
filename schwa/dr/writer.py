@@ -1,4 +1,6 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import inspect
 
 import msgpack
@@ -15,7 +17,7 @@ __all__ = ['Writer']
 class Writer(object):
   __slots__ = ('_ostream', '_packer', '_doc_schema')
 
-  WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
+  WIRE_VERSION = 2  # Version of the wire protocol the reader knows how to process.
 
   def __init__(self, ostream, doc_schema_or_doc):
     """
@@ -46,23 +48,23 @@ class Writer(object):
     if not isinstance(doc, Doc):
       raise ValueError('You can only stream instances of Doc')
 
-    # get or construct the RTManager for the document
+    # Get or construct the RTManager for the document.
     if doc._dr_rt is None:
       rt = doc._dr_rt = build_rt(self._doc_schema)
     else:
       rt = doc._dr_rt = merge_rt(doc._dr_rt, self._doc_schema)
 
-    # update the _dr_index values
+    # Update the _dr_index values.
     self._index_stores(doc, rt)
 
-    # write wire version
+    # Write wire version.
     self._pack(Writer.WIRE_VERSION)
 
-    # write headers
+    # Write headers.
     self._pack(self._build_klasses(doc, rt))
     self._pack(self._build_stores(doc, rt))
 
-    # write instances
+    # Write instances.
     self._write_doc_instance(doc, rt)
     self._write_instances(doc, rt)
 
@@ -113,7 +115,7 @@ class Writer(object):
         if f.is_collection:
           field[FieldType.IS_COLLECTION] = None
 
-      # work out the serial name for the class
+      # Work out the serial name for the class.
       if klass is rt.doc:
         klass_name = '__meta__'
       elif klass.is_lazy():
@@ -132,7 +134,7 @@ class Writer(object):
     stores = []
 
     for s in rt.doc.stores:
-      # // <store> ::= ( <store_name>, <type_id>, <store_nelem> )
+      # <store> ::= ( <store_name>, <type_id>, <store_nelem> )
       store_name = s.serial if s.is_lazy() else s.defn.serial
       klass_id = s.klass.klass_id
       nelem = s.nelem if s.is_lazy() else len(getattr(doc, s.defn.name))

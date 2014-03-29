@@ -1,9 +1,11 @@
-# vim: set ts=2 et:
-from unittest import TestCase
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+import unittest
 
 from schwa import dr
 
-from utils import write_read
+from testutils import write_read
 
 
 class DocWithoutFields(dr.Doc):
@@ -21,7 +23,7 @@ class DocWithDefaultField(dr.Doc):
   field = FieldWithDefault()
 
 
-class FieldTests(TestCase):
+class FieldTests(unittest.TestCase):
   def test_default_field(self):
     doc = DocWithDefaultField()
     self.assertEquals(doc.field, FieldWithDefault.DEFAULT_VALUE)
@@ -35,6 +37,6 @@ class FieldTests(TestCase):
     doc = DocWithoutFields()
     doc = write_read(doc, DocWithoutFields, DocWithDefaultField)
     self.assertEquals(doc.field, FieldWithDefault.DEFAULT_VALUE)
-    doc.field = 'value'
+    doc.field = b'value'
     doc = write_read(doc, DocWithDefaultField)
-    self.assertEquals(doc.field, 'value')
+    self.assertEquals(doc.field, b'value')

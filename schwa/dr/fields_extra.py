@@ -1,4 +1,7 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+
 import dateutil.parser
 
 from .fields_core import Field
@@ -22,6 +25,7 @@ class DateTime(Field):
       return None
     return obj.isoformat()
 
+
 class RelaxedDateTime(DateTime):
   ''' Tolerates malformed timestamps. '''
   def from_wire(self, val, rtfield, cur_store, doc):
@@ -29,6 +33,7 @@ class RelaxedDateTime(DateTime):
       return super(RelaxedDateTime, self).from_wire(val, rtfield, cur_store, doc)
     except ValueError:
       return None
+
 
 class Text(Field):
   __slots__ = ('encoding', )

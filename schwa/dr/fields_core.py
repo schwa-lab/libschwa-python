@@ -1,4 +1,9 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+
+import six
+
 from .containers import StoreList
 from .exceptions import WriterException
 
@@ -98,7 +103,7 @@ class Field(BaseField):
     return val
 
   def to_wire(self, obj, rtfield, cur_store, doc):
-    if isinstance(obj, unicode):
+    if isinstance(obj, six.text_type):
       obj = obj.encode('utf-8')
     return obj
 
@@ -112,7 +117,7 @@ class Pointer(BaseField):
   def __init__(self, klass, store=None, serial=None, help=None):
     from .meta import Ann
     super(Pointer, self).__init__(serial=serial, help=help)
-    if isinstance(klass, (str, unicode)):
+    if isinstance(klass, (six.binary_type, six.text_type)):
       self._klass_name = klass
       self._klass = None
     elif issubclass(klass, Ann):
@@ -201,7 +206,7 @@ class Slice(BaseField):
     if klass is None:
       self._klass_name = None
       self._klass = None
-    elif isinstance(klass, (str, unicode)):
+    elif isinstance(klass, (six.binary_type, six.text_type)):
       self._klass_name = klass
       self._klass = None
     elif issubclass(klass, Ann):
@@ -244,7 +249,7 @@ class Store(BaseAttr):
   def __init__(self, klass, serial=None, help=None):
     from .meta import Ann
     super(Store, self).__init__(serial=serial, help=help)
-    if isinstance(klass, (str, unicode)):
+    if isinstance(klass, (six.binary_type, six.text_type)):
       self._klass_name = klass
       self._klass = None
     elif issubclass(klass, Ann):

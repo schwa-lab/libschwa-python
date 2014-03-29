@@ -1,4 +1,9 @@
-from unittest import TestCase
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+import unittest
+
+from six.moves import xrange
 
 from schwa import dr
 
@@ -40,7 +45,7 @@ class SuperSliceAnnot(dr.Ann):
     name = 'SuperSliceAnnot'
 
 
-class SliceDecoratorsTest(TestCase):
+class SliceDecoratorsTest(unittest.TestCase):
   def setUp(self):
     self.doc = Document()
     for val in '0123456':
@@ -217,7 +222,7 @@ class SliceDecoratorsTest(TestCase):
     assert_clean()
 
 
-class PointerDecoratorTest(TestCase):
+class PointerDecoratorTest(unittest.TestCase):
   def setUp(self):
     self.doc = Document()
     self.doc.annots.create(field='0')
@@ -341,22 +346,22 @@ class PointerDecoratorTest(TestCase):
     self.test_reverse_overlapping_pointers(True)
 
 
-class GraphDecoratorTest(TestCase):
+class GraphDecoratorTest(unittest.TestCase):
 
   def setUp(self):
     #     A     F
     #    / \    |
     #   B   C   G
-    #  / \    
-    # D   E    
+    #  / \
+    # D   E
     self.doc = Document()
 
     annots = self.doc.annots
-    for i in range(7):
+    for i in xrange(7):
       label = chr(ord('A') + i)
       annots.create(field=label)
 
-    A, B, C, D, E, F, G = range(7)
+    A, B, C, D, E, F, G = xrange(7)
     annots[A].children = [annots[B], annots[C]]
     annots[B].children = [annots[D], annots[E]]
     annots[F].children = [annots[G]]
@@ -373,14 +378,14 @@ class GraphDecoratorTest(TestCase):
     decorate(self.doc)
 
     EXPECTED = {
-      'A': (0, 2 if height_aggregate == 'max' else 1),
-      'B': (1, 1),
-      'C': (1, 0),
-      'D': (2, 0),
-      'E': (2, 0),
-      'E': (2, 0),
-      'F': (0, 1),
-      'G': (1, 0),
+        'A': (0, 2 if height_aggregate == 'max' else 1),
+        'B': (1, 1),
+        'C': (1, 0),
+        'D': (2, 0),
+        'E': (2, 0),
+        'E': (2, 0),
+        'F': (0, 1),
+        'G': (1, 0),
     }
 
     for a in self.doc.annots:
@@ -417,7 +422,7 @@ class GraphDecoratorTest(TestCase):
   # TODO: test max_depth
 
 
-class PrevNextIndexTest(TestCase):
+class PrevNextIndexTest(unittest.TestCase):
   def setUp(self):
     self.doc = Document()
     for val in '012':
@@ -483,7 +488,7 @@ class PrevNextIndexTest(TestCase):
     assert_clean()
 
 
-class BuildIndexTest(TestCase):
+class BuildIndexTest(unittest.TestCase):
   def setUp(self):
     self.doc = Document()
     self.doc.annots.create(field=['dog', 'cat'])
@@ -584,7 +589,7 @@ class BuildIndexTest(TestCase):
     assert_clean()
 
 
-class StoreSubsetTest(TestCase):
+class StoreSubsetTest(unittest.TestCase):
   """Tests using a function instead of an attribute as a store reference"""
 
   def setUp(self):
@@ -621,7 +626,7 @@ class StoreSubsetTest(TestCase):
     self.assertRaises(NotImplementedError, decorate.undo, self.doc)
 
 
-class ApplicationsTest(TestCase):
+class ApplicationsTest(unittest.TestCase):
   def real_world_applications_test(self):
     class Token(dr.Ann):
       span = dr.Slice()

@@ -1,10 +1,12 @@
-# vim: set ts=2 et:
-from collections import defaultdict
-from functools import partial
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+import collections
+import functools
 import operator
-from operator import attrgetter
 import itertools
-from types import StringTypes, TupleType
+
+import six
 
 from .decoration import Decorator
 
@@ -47,7 +49,7 @@ def _attrappender(attr):
 def _attrgetter(attr):
   if callable(attr):
     return attr
-  return attrgetter(attr)
+  return operator.attrgetter(attr)
 
 
 def _storegetter(store):
@@ -59,12 +61,13 @@ def _storegetter(store):
   if callable(store):
     return store
   else:
-    return attrgetter(store)
+    return operator.attrgetter(store)
+
 
 def _aggregator(mode, attr):
-  if mode is None or mode is 'last':
+  if mode is None or mode == 'last':
     return _attrsetter(attr)
-  elif mode is 'first':
+  elif mode == 'first':
     def fn(obj, val):
       try:
         return getattr(obj, attr)
@@ -73,18 +76,18 @@ def _aggregator(mode, attr):
       setattr(obj, attr, val)
       return val
     return fn
-  elif mode is 'append':
+  elif mode == 'append':
     return _attrappender(attr)
-  elif mode is 'min':
+  elif mode == 'min':
     fn = min
     default = float('inf')
-  elif mode is 'max':
+  elif mode == 'max':
     fn = max
     default = float('-inf')
-  elif mode is 'add':
+  elif mode == 'add':
     fn = operator.add
     default = 0
-  elif mode is 'mul':
+  elif mode == 'mul':
     fn = operator.mul
     default = 1
   else:
@@ -96,6 +99,7 @@ def _aggregator(mode, attr):
     setattr(obj, attr, val)
     return val
   return agg
+
 
 class add_prev_next(Decorator):
   """
@@ -156,7 +160,7 @@ class build_index(Decorator):
         # Or should users ensure all objects in the store have the appropriate attribute?
         # WARNING: This behaviour may hide true AttributeErrors
         continue
-      if isinstance(keys, (StringTypes, TupleType)) or not hasattr(keys, '__iter__'):
+      if isinstance(keys, (six.binary_type, six.text_type, tuple)) or not hasattr(keys, '__iter__'):
         keys = (keys,)
       for key in keys:
         add_entry(key, val)
@@ -164,7 +168,7 @@ class build_index(Decorator):
 
 class build_multi_index(build_index):
   def __init__(self, *args, **kwargs):
-    kwargs['construct'] = partial(defaultdict, set)
+    kwargs['construct'] = functools.partial(collections.defaultdict, set)
     kwargs['add_entry'] = lambda index: lambda key, val: index[key].add(val)
     super(build_multi_index, self).__init__(*args, **kwargs)
 
@@ -316,11 +320,11 @@ class find_contained_slices(Decorator):
       raise ValueError('collection_attr must be a non-empty string')
     super(find_contained_slices, self).__init__(self._build_key(containing_store, containing_slice, contained_store, contained_slice, collection_attr))
     self.get_containing_store = _storegetter(containing_store)
-    self.get_containing_slice = attrgetter(containing_slice)
+    self.get_containing_slice = operator.attrgetter(containing_slice)
     self.get_contained_store = _storegetter(contained_store or containing_store)
-    self.get_contained_slice = attrgetter(contained_slice or containing_slice)
+    self.get_contained_slice = operator.attrgetter(contained_slice or containing_slice)
     self.set_collection = _attrsetter(collection_attr)
-    self.get_collection = attrgetter(collection_attr)
+    self.get_collection = operator.attrgetter(collection_attr)
     self._set_affected_fields((containing_store, collection_attr))
 
   def _gen_tuples(self, store, get_slice, group):
@@ -362,8 +366,8 @@ class convert_slices(Decorator):
     super(convert_slices, self).__init__(self._build_key(source_store, target_store, source_slice_attr, target_slice_attr, new_slice_attr))
     self.get_source_store = _storegetter(source_store)
     self.get_target_store = _storegetter(target_store)
-    self.get_source_slice = attrgetter(source_slice_attr)
-    self.get_target_slice = attrgetter(target_slice_attr)
+    self.get_source_slice = operator.attrgetter(source_slice_attr)
+    self.get_target_slice = operator.attrgetter(target_slice_attr)
     self.set_new_slice = _attrsetter(new_slice_attr)
     self._set_affected_fields((source_store, new_slice_attr))
 
@@ -425,6 +429,7 @@ class reverse_pointers(Decorator):
       else:
         self.set_rev(target, source)
 
+
 class mark_depth(Decorator):
   """
   In a graph structure, mark the depth and height of each node, counted from root and leaf, respectively.
@@ -436,7 +441,7 @@ class mark_depth(Decorator):
   - depth_attr: the attribute to set on each node indicating its distance from a start node
   - height_attr: the attribute to set on each node indicating its distance from an end node (one without children)
   - depth_aggregate: one of ('last', 'min', 'max'). 'last' adopts the last value in right traversal.
-  
+
   """
   def __init__(self, store, get_starts, child_attr, depth_attr=None, height_attr=None, depth_aggregate=None, height_aggregate='max', max_depth=None):
     super(mark_depth, self).__init__(self._build_key(get_starts, child_attr, depth_attr, height_attr, depth_aggregate, height_aggregate, max_depth))

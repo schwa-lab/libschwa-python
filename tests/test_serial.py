@@ -1,9 +1,11 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 
 from schwa import dr
 
-from utils import write_read
+from testutils import write_read
 
 # TODO: test pointers to renamed stores
 
@@ -29,18 +31,18 @@ class Doc3(dr.Doc):
 
 class SerialTest(unittest.TestCase):
   def test_doc1_doc1(self):
-    d1 = Doc1(name='test.txt')
+    d1 = Doc1(name=b'test.txt')
     self.assertEqual(len(d1._dr_stores), 1)
     self.assertIn('xs', d1._dr_stores)
 
     self.assertTrue(hasattr(d1, 'name'))
     self.assertFalse(hasattr(d1, 'filename'))
-    self.assertEqual(d1.name, 'test.txt')
+    self.assertEqual(d1.name, b'test.txt')
 
-    d1.xs.create(foo=1, bar='hello')
-    d1.xs.create(foo=10, bar='world')
+    d1.xs.create(foo=1, bar=b'hello')
+    d1.xs.create(foo=10, bar=b'world')
     d1.xs.create(foo=5)
-    d1.xs.create(bar='bar')
+    d1.xs.create(bar=b'bar')
     self.assertEqual(len(d1.xs), 4)
     self.assertEqual(len([x for x in d1.xs]), 4)
 
@@ -57,7 +59,7 @@ class SerialTest(unittest.TestCase):
 
     self.assertTrue(hasattr(d2, 'name'))
     self.assertFalse(hasattr(d2, 'filename'))
-    self.assertEqual(d2.name, 'test.txt')
+    self.assertEqual(d2.name, b'test.txt')
 
     self.assertEqual(len(d2._dr_stores), 1)
     self.assertIn('xs', d2._dr_stores)
@@ -72,10 +74,10 @@ class SerialTest(unittest.TestCase):
 
   def test_different_doc(self):
     d1 = Doc1()
-    d1.xs.create(foo=1, bar='hello')
-    d1.xs.create(foo=10, bar='world')
+    d1.xs.create(foo=1, bar=b'hello')
+    d1.xs.create(foo=10, bar=b'world')
     d1.xs.create(foo=5)
-    d1.xs.create(bar='bar')
+    d1.xs.create(bar=b'bar')
 
     d2 = write_read(d1, Doc1, Doc2)
     self.assertIsNot(d1, d2)
@@ -94,10 +96,10 @@ class SerialTest(unittest.TestCase):
 
   def test_store_serial(self):
     d1 = Doc1()
-    d1.xs.create(foo=1, bar='hello')
-    d1.xs.create(foo=10, bar='world')
+    d1.xs.create(foo=1, bar=b'hello')
+    d1.xs.create(foo=10, bar=b'world')
     d1.xs.create(foo=5)
-    d1.xs.create(bar='bar')
+    d1.xs.create(bar=b'bar')
 
     d3 = write_read(d1, Doc1, Doc3)
     self.assertFalse(hasattr(d3, 'xs'))

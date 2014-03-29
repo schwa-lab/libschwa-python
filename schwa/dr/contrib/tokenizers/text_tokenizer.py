@@ -1,5 +1,10 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import logging
+
+import six
+
 from schwa import tokenizer
 
 log = logging.getLogger()
@@ -22,7 +27,7 @@ class TextTokenizer(object):
     self.save_between = save_between
 
   def tokenize(self, text):
-    assert isinstance(text, unicode)
+    assert isinstance(text, six.text_type)
     self.offset = 0
     self.doc = self.document_klass()
     self.tokenizer.tokenize(text.encode(ENC), dest=self)

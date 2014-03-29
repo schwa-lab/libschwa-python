@@ -89,5 +89,10 @@ setup(
     install_requires=[
         'msgpack-python >= 0.3',
         'python-dateutil',
+        'six',
+    ],
+    test_suite='nose.collector',
+    tests_require=[
+        'nose',
     ],
 )

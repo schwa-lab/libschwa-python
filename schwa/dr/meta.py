@@ -1,5 +1,9 @@
-# vim: set ts=2 et:
-import StringIO
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+import collections
+
+import six
 
 from .containers import StoreList
 from .exceptions import DependencyException
@@ -12,13 +16,12 @@ class MetaBase(type):
   _registered = {}  # { _dr_name : klass }
 
   def __new__(mklass, klass_name, bases, attrs):
-    # sanity check the base classes
+    # Sanity check the base classes.
     is_here = has_ann_base = has_doc_base = False
     for base in bases:
       if attrs.get('__module__') == MetaBase.__module__:
         is_here = True
       else:
-        #from . import Ann, Doc
         if issubclass(base, Ann):
           has_ann_base = True
         elif issubclass(base, Doc):
@@ -29,12 +32,14 @@ class MetaBase(type):
       elif not (has_ann_base or has_doc_base):
         raise ValueError('Class {0!r} must have either Ann or Doc as a base class'.format(klass_name))
 
-    # discover the Field and Store instances
+    # Discover the Field and Store instances.
     fields, stores = {}, {}
     for base in bases:
       fields.update(getattr(base, '_dr_fields', {}))
       stores.update(getattr(base, '_dr_stores', {}))
-    for name, attr in attrs.iteritems():
+    for name, attr in six.iteritems(attrs):
+      if isinstance(name, six.binary_type):
+        name = name.decode('utf-8')
       if isinstance(attr, Store):
         # die if a Store is placed on an Ann
         if has_ann_base:
@@ -43,13 +48,13 @@ class MetaBase(type):
       elif isinstance(attr, BaseField):
         fields[name] = attr
 
-    # construct __slots__
+    # Construct __slots__.
     if not is_here:
       if '__slots__' in attrs:
         slots = list(attrs['__slots__']) + list(fields) + list(stores)
         attrs['__slots__'] = tuple(slots)
 
-      # remove the Store and BaseField objects from the set of class attributes so that they can be overwritten by instances of the class
+      # Remove the Store and BaseField objects from the set of class attributes so that they can be overwritten by instances of the class.
       for key in fields:
         if key in attrs:
           del attrs[key]
@@ -57,14 +62,18 @@ class MetaBase(type):
         if key in attrs:
           del attrs[key]
 
-    # construct the class
+    # Construct the class.
     klass = super(MetaBase, mklass).__new__(mklass, klass_name, bases, attrs)
 
-    # adds the Field and Store information appropriately
-    klass._dr_fields = fields  # { attr : Field }
-    klass._dr_stores = stores  # { attr : Store }
+    # Adds the Field and Store information appropriately.
+    klass._dr_fields = collections.OrderedDict()  # { attr : Field }
+    for key in sorted(fields):
+      klass._dr_fields[key] = fields[key]
+    klass._dr_stores = collections.OrderedDict()  # { attr : Store }
+    for key in sorted(stores):
+      klass._dr_stores[key] = stores[key]
 
-    # add the name
+    # Add the name.
     meta = attrs.get('Meta', None)
     if hasattr(meta, 'name'):
       klass._dr_name = meta.name
@@ -82,24 +91,30 @@ class MetaBase(type):
     else:
       klass._dr_help = ''
 
-    # ensure _dr_name's are unique
+    # _dr_name and _dr_serial are stored as Unicode.
+    if isinstance(klass._dr_name, six.binary_type):
+      klass._dr_name = klass._dr_name.decode('utf-8')
+    if isinstance(klass._dr_serial, six.binary_type):
+      klass._dr_serial = klass._dr_serial.decode('utf-8')
+
+    # Ensure _dr_name's are unique.
     if klass._dr_name in MetaBase._registered:
       raise ValueError('The name {0!r} has already been registered by another class ({1})'.format(klass._dr_name, MetaBase._registered[klass._dr_name]))
     MetaBase._registered[klass._dr_name] = klass
 
-    # construct the docstring for the class
+    # Construct the docstring for the class.
     MetaBase.add_docstring(klass)
 
     return klass
 
   @staticmethod
   def add_docstring(klass):
-    doc = StringIO.StringIO()
+    doc = six.StringIO()
     write_doc = False
     if klass.__doc__:
       doc.write(klass.__doc__ + '\n')
       write_doc = True
-    doc.write('Docrep members for this class:\n')
+    doc.write('docrep members for this class:\n')
     for name, field in sorted(klass._dr_fields.items()):
       doc.write('* ')
       doc.write(name)
@@ -125,23 +140,23 @@ class MetaBase(type):
     return MetaBase._registered[klass_name]
 
 
+@six.add_metaclass(MetaBase)
 class Base(object):
-  __metaclass__ = MetaBase
   __slots__ = ('_dr_lazy', )
 
   def __init__(self, **kwargs):
-    for name, field in self._dr_fields.iteritems():
+    for name, field in six.iteritems(self._dr_fields):
       setattr(self, name, field.default())
-    for name, store in self._dr_stores.iteritems():
+    for name, store in six.iteritems(self._dr_stores):
       setattr(self, name, store.default())
     self._dr_lazy = None
 
-    for k, v in kwargs.iteritems():
+    for k, v in six.iteritems(kwargs):
       setattr(self, k, v)
 
   @classmethod
   def from_wire(klass, **kwargs):
-    for k, v in kwargs.iteritems():
+    for k, v in six.iteritems(kwargs):
       f = klass._dr_fields.get(k, None)
       if hasattr(f, 'from_wire'):
         kwargs[k] = f.from_wire(v)
@@ -154,6 +169,12 @@ class Ann(Base):
   def __init__(self, **kwargs):
     super(Ann, self).__init__(**kwargs)
     self._dr_index = None
+
+  def __lt__(self, other):
+    if self._dr_index is None:
+      return -1
+    else:
+      return self._dr_index < other._dr_index
 
 
 class Doc(Base):
@@ -174,6 +195,17 @@ class Doc(Base):
     return create_schema(klass)
 
 
+def safe_klass_or_field_name(name):
+  # In py2, class names must be non-Unicode. In py3, class names must be Unicode.
+  if six.PY2:
+    if not isinstance(name, six.binary_type):
+      name = name.encode('utf-8')
+  else:
+    if not isinstance(name, six.text_type):
+      name = name.decode('utf-8')
+  return name
+
+
 def make_ann(name, *named_fields, **defined_fields):
   """
   A collections.namedtuple sister function for creating Ann subclasses.
@@ -183,7 +215,9 @@ def make_ann(name, *named_fields, **defined_fields):
   @return The created class object
   """
   from .fields_core import Field
-  attrs = dict(defined_fields)
+  attrs = {}
+  for k, v in six.iteritems(defined_fields):
+    attrs[safe_klass_or_field_name(k)] = v
   for field in named_fields:
-    attrs[field] = Field()
-  return MetaBase(name, (Ann, ), attrs)
+    attrs[safe_klass_or_field_name(field)] = Field()
+  return MetaBase(safe_klass_or_field_name(name), (Ann, ), attrs)

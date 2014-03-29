@@ -1,14 +1,17 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import pprint
 import unittest
 
 from schwa import dr
 from schwa.dr.contrib.tokenizers import TextTokenizer
 
-INPUT = u"""The cat sat on the dog's mat.
+
+INPUT = u'''The cat sat on the dog's mat.
 The dog was fat.
 
-So said the cat."""
+So said the cat.'''
 
 OUTPUT = [
     (0, 0, 'The'),

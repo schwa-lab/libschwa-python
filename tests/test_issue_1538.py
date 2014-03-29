@@ -1,16 +1,19 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
 """
 Unit test for #1538
 http://schwa.org/issues/1538
 
 Writing a pointer to an object from the incorrect store should raise an exception.
 """
+from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 
 from schwa import dr
 from schwa.dr.exceptions import WriterException
+from six.moves import xrange
 
-from utils import write_read
+from testutils import write_read
 
 
 class Foo(dr.Ann):
@@ -33,7 +36,7 @@ class Issue1538Test(unittest.TestCase):
 
   def setUp(self):
     self.doc = Doc()
-    for val in range(5):
+    for val in xrange(5):
       self.doc.foos.create(val=val)
       self.doc.wrong_foos.create(val=val)
       self.doc.bars.create(val=val)

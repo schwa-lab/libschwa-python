@@ -1,8 +1,13 @@
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
 """
 Utilities for managing document decoration by marking the document with the set of decorations that have been applied to it.
 """
-from collections import defaultdict
-from functools import wraps, partial
+from __future__ import absolute_import, print_function, unicode_literals
+import collections
+import functools
+
+import six
 
 __all__ = ['Decorator', 'decorator', 'method_requires_decoration', 'requires_decoration']
 
@@ -13,7 +18,7 @@ def decorator(key=None):
   Duplication is checked using the given key or the function object.
   """
   def dec(fn):
-    @wraps(fn)
+    @functools.wraps(fn)
     def wrapper(doc, check=True, mark=True):
       if not hasattr(doc, '_dr_decorated_by'):
         doc._dr_decorated_by = {}
@@ -22,7 +27,7 @@ def decorator(key=None):
       if mark:
         doc._dr_decorated_by[key] = wrapper
       fn(doc)
-    wrapper.reapply = partial(wrapper, check=False)
+    wrapper.reapply = functools.partial(wrapper, check=False)
     return wrapper
   if callable(key):
     return dec(key)
@@ -51,9 +56,9 @@ class Decorator(object):
 
     Where store, field or attr are not strings or None for any of the args, affected fields will not be stored.
     """
-    field_map = defaultdict(set)
+    field_map = collections.defaultdict(set)
     for field in args:
-      if isinstance(field, str):
+      if isinstance(field, (six.binary_type, six.text_type)):
         field_map[None].add(field)
       elif field is None:
         pass
@@ -62,10 +67,10 @@ class Decorator(object):
           store, field = field
         except TypeError:
           return
-        if isinstance(store, str) and isinstance(field, str):
+        if isinstance(store, (six.binary_type, six.text_type)) and isinstance(field, (six.binary_type, six.text_type)):
           field_map[store].add(field)
         elif store is not None and field is not None:
-          # not strings or None
+          # Not strings or None.
           return
     self._affected_fields = dict(field_map)
 
@@ -91,7 +96,7 @@ class Decorator(object):
     except AttributeError:
       raise NotImplementedError('The affected fields are unknown for decorator %r' % self)
 
-    for store, fields in field_map.iteritems():
+    for store, fields in six.iteritems(field_map):
       if store is None:
         self._clear_fields(doc, fields)
       else:
@@ -135,7 +140,7 @@ def requires_decoration(*decorators, **kwargs):
   decorators = list(_flatten(decorators))
 
   def dec(fn):
-    @wraps(fn)
+    @functools.wraps(fn)
     def wrapper(*args, **kwargs):
       try:
         doc = args[doc_arg]
@@ -149,4 +154,4 @@ def requires_decoration(*decorators, **kwargs):
   return dec
 
 
-method_requires_decoration = partial(requires_decoration, doc_arg=1)
+method_requires_decoration = functools.partial(requires_decoration, doc_arg=1)

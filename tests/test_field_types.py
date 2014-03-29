@@ -1,11 +1,13 @@
 # vim: set ts=2 et:
 # encoding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import datetime
 import unittest
 
 from schwa import dr
+import six
 
-from utils import write_read
+from testutils import write_read
 
 
 class Event(dr.Ann):
@@ -51,22 +53,22 @@ class TestEncodedStringField(unittest.TestCase):
     doc = Doc()
     doc.strings.create(utf8=U, utf32=U)
     doc.strings.create()
-    self.assertTrue(isinstance(doc.strings[0].utf8, unicode))
-    self.assertTrue(isinstance(doc.strings[0].utf32, unicode))
+    self.assertTrue(isinstance(doc.strings[0].utf8, six.text_type))
+    self.assertTrue(isinstance(doc.strings[0].utf32, six.text_type))
 
     doc = write_read(doc, schema)
     self.assertEqual(len(doc.strings), 2)
-    self.assertTrue(isinstance(doc.strings[0].utf8, unicode))
-    self.assertTrue(isinstance(doc.strings[0].utf32, unicode))
+    self.assertTrue(isinstance(doc.strings[0].utf8, six.text_type))
+    self.assertTrue(isinstance(doc.strings[0].utf32, six.text_type))
     self.assertEqual(doc.strings[0].utf8, U)
     self.assertEqual(doc.strings[0].utf32, U)
 
   def test_store_empty(self):
     doc = Doc()
     doc.strings.create(utf8=u'', store_empty=u'')
-    self.assertTrue(isinstance(doc.strings[0].utf8, unicode))
-    self.assertTrue(isinstance(doc.strings[0].store_empty, unicode))
+    self.assertTrue(isinstance(doc.strings[0].utf8, six.text_type))
+    self.assertTrue(isinstance(doc.strings[0].store_empty, six.text_type))
 
     doc = write_read(doc, Doc)
     self.assertIsNone(doc.strings[0].utf8)
-    self.assertTrue(isinstance(doc.strings[0].store_empty, unicode))
+    self.assertTrue(isinstance(doc.strings[0].store_empty, six.text_type))

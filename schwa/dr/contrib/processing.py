@@ -1,15 +1,18 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import argparse
 import io
 import sys
 import threading
+
+from schwa.dr import Reader, Writer
+from six.move import xrange
+
 try:
   import zmq
 except ImportError:
   zmq = None
-
-from ..reader import Reader
-from ..writer import Writer
 
 
 def stream_coroutine(istream, ostream, doc_class=None, automagic=False):
@@ -42,8 +45,8 @@ def zmq_coroutine(context, dealer_url, doc_class=None, automagic=False):
 arg_parser = argparse.ArgumentParser(add_help=False)
 if zmq:
   _megroup = arg_parser.add_mutually_exclusive_group()
-  _megroup.add_argument('--serve', dest='serve_url', metavar="ADDRESS", default=None, help='Serve from the specified address, e.g. tcp://*:7300')
-  _megroup.add_argument('--worker', dest='worker_url', metavar="ADDRESS", default=None, help='Acquire work from the specified address')
+  _megroup.add_argument('--serve', dest='serve_url', metavar='ADDRESS', default=None, help='Serve from the specified address, e.g. tcp://*:7300')
+  _megroup.add_argument('--worker', dest='worker_url', metavar='ADDRESS', default=None, help='Acquire work from the specified address')
   arg_parser.add_argument('--nthreads', default=1, type=int, help='In --serve or --worker mode, how many worker threads to provide (default: %(default)s)')
 
 
