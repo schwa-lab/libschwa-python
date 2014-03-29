@@ -2,7 +2,7 @@
 #ifndef TEXT_STREAM_H_
 #define TEXT_STREAM_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <sstream>
 

@@ -1,5 +1,5 @@
 /* -*- Mode: C++; indent-tabs-mode: nil -*- */
-#include <Python.h>
+#include "_python.h"
 
 #include <fstream>
 #include <memory>
@@ -39,17 +39,17 @@ typedef struct {
 static PyObject *
 PyTokenizer_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   PyTokenizer *self = (PyTokenizer *)type->tp_alloc(type, 0);
-  if (self != nullptr) {
+  if (self != nullptr)
     self->tokenizer = new tok::Tokenizer();
-  }
   return (PyObject *)self;
 }
 
 
 static void
 PyTokenizer_dealloc(PyTokenizer *self) {
+  PyObject *const pyself = (PyObject *)self;
   delete self->tokenizer;
-  self->ob_type->tp_free((PyObject*)self);
+  pyself->ob_type->tp_free(pyself);
 }
 
 
@@ -98,7 +98,7 @@ PyObject *
 PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   // Setup default values for kwarg parsing.
   PyObject *pysrc = nullptr;
-  PyObject *pydest = (PyObject *)&PyString_Type;
+  PyObject *pydest = (PyObject *)&SCHWA_PY_BYTES_TYPE;
   const char *filename = nullptr;
   Py_ssize_t buffer_size = static_cast<Py_ssize_t>(tok::DEFAULT_BUFFER_SIZE);
   int pyerrors = to_underlying(tok::OnError::SKIP);
@@ -116,7 +116,7 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   if (pysrc) {
     if (PyUnicode_Check(pysrc))
       return PyErr_Format(PyExc_TypeError, "tokenize() does not accept unicode objects, use unicode.encode('utf-8')");
-    else if (!PyBuffer_Check(pysrc))
+    else if (!SCHWA_PY_CHECK_BUFFER(pysrc))
       return PyErr_Format(PyExc_TypeError, "tokenize() source must support the buffer interface");
   }
   if (buffer_size <= 0)
@@ -139,7 +139,7 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   try {
     // Work out what the destination for the tokenizers output should be.
     std::unique_ptr<tok::PyStream> stream;
-    if ((void *)pydest == (void *)&PyString_Type)
+    if ((void *)pydest == (void *)&SCHWA_PY_BYTES_TYPE)
       stream.reset(new tok::PyBytesStream(normalise));
     else if ((void *)pydest == (void *)&PyUnicode_Type)
       stream.reset(new tok::PyUnicodeStream(normalise));
@@ -203,8 +203,7 @@ static PyMethodDef PyTokenizer_methods[] = {
 
 
 static PyTypeObject PyTokenizerType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                         /* ob_size */
+  PyVarObject_HEAD_INIT(nullptr, 0)
   "tokenizer.Tokenizer",     /* tp_name */
   sizeof(PyTokenizer),       /* tp_basicsize */
   0,                         /* tp_itemsize */
@@ -248,49 +247,79 @@ static PyTypeObject PyTokenizerType = {
 // ============================================================================
 // Module
 // ============================================================================
-static PyMethodDef module_functions[] = {
+static const char *const module_name = "tokenizer";
+static const char *const module_doc = "Schwa Lab tokenizer module";
+
+static PyMethodDef module_methods[] = {
   {nullptr}  /* Sentinel */
 };
 
+#ifdef IS_PY3K
+static PyModuleDef module_def = {
+  PyModuleDef_HEAD_INIT,  /* m_base */
+  module_name,            /* m_name */
+  module_doc,             /* m_doc */
+  0,                      /* m_size */
+  module_methods,         /* m_methods */
+  nullptr,                /* m_reload */
+  nullptr,                /* m_traverse */
+  nullptr,                /* m_clear */
+  nullptr,                /* m_free */
+};
+#endif
 
-static bool
+
+static PyObject *
 _inittokenizer(void) {
   // Ensure that PyTokenizerType is ready for use.
   if (PyType_Ready(&PyTokenizerType) != 0)
-    return false;
+    return nullptr;
 
   // Construct the module.
-  PyObject *m = Py_InitModule3("tokenizer", module_functions, "Schwa Lab tokenizer module");
+#ifdef IS_PY3K
+  PyObject *const m = PyModule_Create(&module_def);
+#else
+  PyObject *const m = Py_InitModule3(module_name, module_methods, module_doc);
+#endif
   if (m == nullptr)
-    return false;
+    return nullptr;
 
   // Add PyTokenizerType to the module.
   Py_INCREF(&PyTokenizerType);
   if (PyModule_AddObject(m, "Tokenizer", (PyObject *)&PyTokenizerType) != 0)
-    return false;
+    return nullptr;
 
   // Create the TokenError exception and add it to the module.
-  module_TokenError = PyErr_NewException((char *)"tokenizer.TokenError", 0, 0);
+  module_TokenError = PyErr_NewException((char *)"tokenizer.TokenError", nullptr, nullptr);
   if (module_TokenError == nullptr)
-    return false;
+    return nullptr;
   Py_INCREF(&module_TokenError);
-  if (PyModule_AddObject(m, "TokenError", (PyObject *)&module_TokenError) != 0)
-    return false;
+  if (PyModule_AddObject(m, "TokenError", module_TokenError) != 0)
+    return nullptr;
 
   // Add the error handling enums to the module.
   if (PyModule_AddIntConstant(m, "ERROR_CALL", to_underlying(tok::OnError::CALL)) != 0)
-    return false;
+    return nullptr;
   if (PyModule_AddIntConstant(m, "ERROR_SKIP", to_underlying(tok::OnError::SKIP)) != 0)
-    return false;
+    return nullptr;
   if (PyModule_AddIntConstant(m, "ERROR_THROW", to_underlying(tok::OnError::THROW)) != 0)
-    return false;
+    return nullptr;
 
-  return true;
+  return m;
 }
 
 
 PyMODINIT_FUNC
+#ifdef IS_PY3K
 inittokenizer(void) {
-  if (!_inittokenizer() && PyErr_Occurred())
+#else
+PyInit_tokenizer(void) {
+#endif
+  PyObject *const m = _inittokenizer();
+  if (m == nullptr && PyErr_Occurred()) {
     PyErr_SetString(PyExc_ImportError, "tokenizer: init failed");
+    SCHWA_PY_MODULE_INIT_RETURN_ERROR(m);
+  }
+
+  SCHWA_PY_MODULE_INIT_RETURN_SUCCESS(m);
 }
