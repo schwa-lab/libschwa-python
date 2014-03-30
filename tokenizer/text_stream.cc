@@ -6,12 +6,12 @@ namespace schwa {
 namespace tokenizer {
 
 // ============================================================================
-// PyTextStream
+// PyBytesStream
 // ============================================================================
 PyObject *
-PyTextStream::get(void) {
+PyBytesStream::return_value(void) {
   const std::string res = _out.str();
-  return PyString_FromStringAndSize(res.data(), res.size());
+  return PyBytes_FromStringAndSize(res.data(), res.size());
 }
 
 
@@ -19,9 +19,9 @@ PyTextStream::get(void) {
 // PyUnicodeStream
 // ============================================================================
 PyObject *
-PyUnicodeStream::get(void) {
+PyUnicodeStream::return_value(void) {
   const std::string res = _out.str();
-  return PyUnicode_DecodeUTF8(res.data(), res.size(), "strict");
+  return PyUnicode_FromStringAndSize(res.data(), res.size());
 }
 
 }  // namespace tokenizer

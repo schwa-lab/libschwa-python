@@ -1,9 +1,12 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+
 __all__ = ['FieldType']
 
 
 class FieldType(object):
-  __slots__ = ('NAME', 'POINTER_TO', 'IS_SLICE', 'IS_SELF_POINTER', 'IS_COLLECTION')
+  __slots__ = ()
 
   NAME = 0
   POINTER_TO = 1

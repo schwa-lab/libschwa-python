@@ -1,6 +1,11 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import argparse
+import collections
 import inspect
+
+import six
 
 from .exceptions import DependencyException
 from .fields_core import Field, Pointer, Pointers, SelfPointer, SelfPointers, Slice
@@ -58,16 +63,16 @@ class AnnSchema(BaseSchema):
 
   def __init__(self, name, help, serial, defn):
     super(AnnSchema, self).__init__(name, help, serial, defn)
-    self._fields = {}
+    self._fields = collections.OrderedDict()
 
   def __contains__(self, name):
-    if not isinstance(name, (str, unicode)):
-      raise TypeError('__contains__ needs a str or unicode field name')
+    if not isinstance(name, (six.binary_type, six.text_type)):
+      raise TypeError('__contains__ needs a text-like field name')
     return name in self._fields
 
   def __getitem__(self, name):
-    if not isinstance(name, (str, unicode)):
-      raise TypeError('__getitem__ needs a str or unicode field name')
+    if not isinstance(name, (six.binary_type, six.text_type)):
+      raise TypeError('__getitem__ needs a text-like field name')
     return self._fields[name]
 
   def add_field(self, name, field):
@@ -76,7 +81,7 @@ class AnnSchema(BaseSchema):
     self._fields[name] = field
 
   def fields(self):
-    return self._fields.itervalues()
+    return six.itervalues(self._fields)
 
   def add_to_argparse(self, parser, prefix='-'):
     pre = prefix + '-' + self.name
@@ -95,9 +100,9 @@ class DocSchema(BaseSchema):
 
   def __init__(self, name, help, serial, defn):
     super(DocSchema, self).__init__(name, help, serial, defn)
-    self._fields = {}
+    self._fields = collections.OrderedDict()
     self._klasses = []
-    self._stores = {}
+    self._stores = collections.OrderedDict()
     self._stores_by_klass = {}
 
   def __contains__(self, arg):
@@ -106,10 +111,10 @@ class DocSchema(BaseSchema):
         if klass.defn == arg:
           return True
       return False
-    elif isinstance(arg, (str, unicode)):
+    elif isinstance(arg, (six.binary_type, six.text_type)):
       return arg in self._fields or arg in self._stores
     else:
-      raise TypeError('__contains__ needs a str or unicode field name or an Ann subclass')
+      raise TypeError('__contains__ needs a text-like field name or an Ann subclass')
 
   def __getitem__(self, arg):
     if inspect.isclass(arg) and issubclass(arg, Ann):
@@ -117,13 +122,13 @@ class DocSchema(BaseSchema):
         if klass.defn == arg:
           return klass
       raise ValueError('Class {0} was not found'.format(arg))
-    elif isinstance(arg, (str, unicode)):
+    elif isinstance(arg, (six.binary_type, six.text_type)):
       if arg in self.fields:
         return self._fields[arg]
       else:
         return self._stores[arg]
     else:
-      raise TypeError('__getitem__ needs a str or unicode field name or an Ann subclass')
+      raise TypeError('__getitem__ needs a text-like field name or an Ann subclass')
 
   def add_field(self, name, field):
     if not isinstance(field, FieldSchema):
@@ -155,6 +160,7 @@ class DocSchema(BaseSchema):
 
   def klass_by_serial(self, serial):
     for klass in self._klasses:
+      print(klass.serial, serial)
       if klass.serial == serial:
         return klass
 
@@ -169,13 +175,13 @@ class DocSchema(BaseSchema):
     return self._stores_by_klass[klass][0]
 
   def fields(self):
-    return self._fields.itervalues()
+    return six.itervalues(self._fields)
 
   def klasses(self):
     return self._klasses
 
   def stores(self):
-    return self._stores.itervalues()
+    return six.itervalues(self._stores)
 
   def add_to_argparse(self, parser, prefix='-'):
     pre = prefix + '-' + self.name
@@ -206,6 +212,9 @@ class FieldSchema(BaseSchema):
     self._points_to = points_to  # StoreSchema
     if is_pointer and points_to is None:
       raise ValueError('is_pointer requires points_to to point to an AnnSchema instance')
+
+  def __str__(self):
+    return 'FieldSchema(name={!r}, serial={!r})'.format(self._name, self.serial)
 
   @property
   def is_collection(self):
@@ -257,7 +266,7 @@ def _get_points_to(attr, field, s_doc, stored_klasses):
 
 
 def _create_fields(ann_klass, s_ann, s_doc, stored_klasses):
-  for attr, field in ann_klass._dr_fields.iteritems():
+  for attr, field in six.iteritems(ann_klass._dr_fields):
     field.resolve_klasses()
     if isinstance(field, Field):
       s_field = FieldSchema(attr, field.help, field.serial, field, False, False, False, False)
@@ -291,8 +300,8 @@ def create_schema(doc_klass):
 
   s_doc = DocSchema.from_klass(doc_klass)
 
-  # construct each of the AnnSchema's
-  for attr, store in doc_klass._dr_stores.iteritems():
+  # Construct each of the AnnSchemas.
+  for attr, store in six.iteritems(doc_klass._dr_stores):
     store.resolve_klasses()
     klass = store._klass
     if klass not in stored_klasses:
@@ -300,15 +309,15 @@ def create_schema(doc_klass):
       s_doc.add_klass(s_klass)
       stored_klasses[klass] = s_klass
 
-  # construct each of the stores
-  for attr, store in doc_klass._dr_stores.iteritems():
+  # Construct each of the stores.
+  for attr, store in six.iteritems(doc_klass._dr_stores):
     s_store = StoreSchema(attr, store.help, store.serial, store, stored_klasses[store._klass])
     s_doc.add_store(attr, s_store)
 
-  # construct each of the fields on the document
+  # Construct each of the fields on the document.
   _create_fields(doc_klass, s_doc, s_doc, stored_klasses)
 
-  # construct each of the stored classes
+  # Construct each of the stored classes.
   for klass in stored_klasses:
     s_klass = stored_klasses[klass]
     _create_fields(klass, s_klass, s_doc, stored_klasses)

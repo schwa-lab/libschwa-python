@@ -1,6 +1,4 @@
 /* -*- Mode: C++; indent-tabs-mode: nil -*- */
-#define PY_SSIZE_T_CLEAN
-
 #include "seq_stream.h"
 
 
@@ -21,16 +19,22 @@ PySeqStream::~PySeqStream(void) {
 
 
 void
-PySeqStream::add(Type type, const char *raw, offset_type begin, offset_type len, const char *norm) {
+PySeqStream::add(Type type, const char *raw, size_t begin, size_t len, const char *norm) {
   const Py_ssize_t pybegin = begin;
   const Py_ssize_t pylen = len;
-  PyObject *tuple = Py_BuildValue("ns#s", pybegin, raw, pylen, norm);
+
+#ifdef IS_PY3K
+  const char *const fmt = "ny#y";
+#else
+  const char *const fmt = "ns#s";
+#endif
+  PyObject *const tuple = Py_BuildValue(fmt, pybegin, raw, pylen, norm);
   _tokens.push_back(tuple);
 }
 
 
 PyObject *
-PySeqStream::get(void) {
+PySeqStream::return_value(void) {
   PyObject *seq = vector2seq(_paragraphs);
   _tokens.resize(0);
   _sentences.resize(0);

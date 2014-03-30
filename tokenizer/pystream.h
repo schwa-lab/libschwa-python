@@ -2,7 +2,7 @@
 #ifndef PYSTREAM_H_
 #define PYSTREAM_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <schwa/_base.h>
 #include <schwa/tokenizer/stream.h>
@@ -16,7 +16,10 @@ namespace schwa {
       PyStream(void) : Stream() { }
       virtual ~PyStream(void) { }
 
-      virtual PyObject *get(void) = 0;
+      /**
+       * Returns a new reference to a Python object return back to Python from this stream.
+       **/
+      virtual PyObject *return_value(void) = 0;
 
     private:
       SCHWA_DISALLOW_COPY_AND_ASSIGN(PyStream);

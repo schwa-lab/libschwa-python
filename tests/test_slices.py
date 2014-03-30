@@ -1,8 +1,10 @@
-# vim: set ts=2 et:
-import cStringIO
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 
 from schwa import dr
+import six
 
 
 class Token(dr.Ann):
@@ -36,47 +38,47 @@ class TestCase(unittest.TestCase):
     doc.tokens.create(span=slice(38, 39), raw='.')
     doc.sents.create(span=slice(5, 10))
 
-    correct = cStringIO.StringIO()
+    correct = six.BytesIO()
     correct.write(
-    '\x02'
-    '\x93'
-      '\x92'
-        '\xa8__meta__'
-        '\x90'
-      '\x92'
-        '\xa5Token'
-        '\x92'
-          '\x81\x00\xa3raw'
-          '\x82\x00\xa4span\x02\xc0'
-      '\x92'
-        '\xa4Sent'
-        '\x92'
-          '\x83\x00\xa4span\x01\x00\x02\xc0'
-          '\x81\x00\xa6number'
-    '\x92'
-      '\x93\xa6tokens\x01\x0a'
-      '\x93\xa5sents\x02\x02'
-    '\x01'
-      '\x80'
-    '\x66'
-      '\x9a'
-        '\x82\x00\xa3The\x01\x92\x00\x03'
-        '\x82\x00\xa5quick\x01\x92\x04\x05'
-        '\x82\x00\xa5brown\x01\x92\x0b\x05'
-        '\x82\x00\xa3fox\x01\x92\x11\x03'
-        '\x82\x00\xa1.\x01\x92\x14\x01'
-        '\x82\x00\xa3The\x01\x92\x16\x03'
-        '\x82\x00\xa4lazy\x01\x92\x1a\x04'
-        '\x82\x00\xa3cat\x01\x92\x1f\x03'
-        '\x82\x00\xa3too\x01\x92\x23\x03'
-        '\x82\x00\xa1.\x01\x92\x26\x01'
-    '\x0b'
-      '\x92'
-        '\x81\x00\x92\x00\x05'
-        '\x81\x00\x92\x05\x05'
+    b'\x02'
+    b'\x93'
+      b'\x92'
+        b'\xa8__meta__'
+        b'\x90'
+      b'\x92'
+        b'\xa4Sent'
+        b'\x92'
+          b'\x81\x00\xa6number'
+          b'\x83\x00\xa4span\x01\x01\x02\xc0'
+      b'\x92'
+        b'\xa5Token'
+        b'\x92'
+          b'\x81\x00\xa3raw'
+          b'\x82\x00\xa4span\x02\xc0'
+    b'\x92'
+      b'\x93\xa5sents\x01\x02'
+      b'\x93\xa6tokens\x02\x0a'
+    b'\x01'
+      b'\x80'
+    b'\x0b'
+      b'\x92'
+        b'\x81\x01\x92\x00\x05'
+        b'\x81\x01\x92\x05\x05'
+    b'\x66'
+      b'\x9a'
+        b'\x82\x00\xa3The\x01\x92\x00\x03'
+        b'\x82\x00\xa5quick\x01\x92\x04\x05'
+        b'\x82\x00\xa5brown\x01\x92\x0b\x05'
+        b'\x82\x00\xa3fox\x01\x92\x11\x03'
+        b'\x82\x00\xa1.\x01\x92\x14\x01'
+        b'\x82\x00\xa3The\x01\x92\x16\x03'
+        b'\x82\x00\xa4lazy\x01\x92\x1a\x04'
+        b'\x82\x00\xa3cat\x01\x92\x1f\x03'
+        b'\x82\x00\xa3too\x01\x92\x23\x03'
+        b'\x82\x00\xa1.\x01\x92\x26\x01'
     )
 
-    out = cStringIO.StringIO()
+    out = six.BytesIO()
     writer = dr.Writer(out, Doc)
     writer.write(doc)
 

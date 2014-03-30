@@ -1,9 +1,12 @@
-# -*- coding: utf-8 -*-
-# vim: set ts=2 sw=2 et:
-from abc import abstractmethod
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+import abc
 import sys
 
-from schwa.dr.contrib.writers.writer import AbstractWriter
+import six
+
+from .writer import AbstractWriter
 
 
 class Column(object):
@@ -27,7 +30,7 @@ class Column(object):
         new_id = len(self.ids[v_label])
         self.ids[v_label][v_id] = new_id
       v = u'%s-%d' % (v_label, new_id)
-    return unicode(v)
+    return six.text_type(v)
 
   def flush(self):
     """ Columns should be flushed if ids need to be reset between docs. """
@@ -56,7 +59,7 @@ class AbstractColumnWriter(AbstractWriter):
     d = u'\n'.join(lines) + self.between
     self.output.write(d.encode(self.encoding))
 
-  @abstractmethod
+  @abc.abstractmethod
   def iter_lines(self, doc):
     """ Yields lines from the Document. """
     raise NotImplementedError

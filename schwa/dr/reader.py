@@ -1,8 +1,12 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import inspect
 import io
 
 import msgpack
+import six
+from six.moves import xrange
 
 from .constants import FieldType
 from .exceptions import ReaderException
@@ -19,7 +23,7 @@ class RTReader(object):
   __slots__ = ('_doc_schema',)
   Manager = RTManager
 
-  WIRE_VERSION = 2  # version of the wire protocol the reader knows how to process
+  WIRE_VERSION = 2  # Version of the wire protocol the reader knows how to process.
 
   def __init__(self, schema):
     self._doc_schema = schema
@@ -28,8 +32,8 @@ class RTReader(object):
     try:
       version = unpacker.unpack()
     except msgpack.OutOfData:
-      return
-    # validate wire protocol version
+      return None
+    # Validate wire protocol version.
     if version != self.WIRE_VERSION:
       raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}. Ensure the input is not plain text.'.format(version, self.WIRE_VERSION))
 
@@ -43,7 +47,8 @@ class RTReader(object):
     # read <klasses> ::= [ <klass> ]
     #        <klass> ::= ( <klass_name>, <fields> )
     for k, (klass_name, fields) in enumerate(read):
-      # construct the RTAnn instance for the class
+      klass_name = klass_name.decode('utf-8')
+      # Construct the RTAnn instance for the class.
       if klass_name == '__meta__':
         rtschema = rt.Ann(k, klass_name, self._doc_schema)
         rt.doc = rtschema
@@ -52,15 +57,15 @@ class RTReader(object):
         rtschema = rt.Ann(k, klass_name, ann_schema)
       rt.klasses.append(rtschema)
 
-      # for each <fields> ::= [ <field> ]
+      # For each <fields> ::= [ <field> ].
       for f, field in enumerate(fields):
         field_name = points_to = None
         is_pointer = is_self_pointer = is_slice = is_collection = False
 
-        # process fields map <field> ::= { <field_type> : <field_val> }
-        for key, val in field.iteritems():
+        # Process fields map <field> ::= { <field_type> : <field_val> }.
+        for key, val in six.iteritems(field):
           if key == FieldType.NAME:
-            field_name = val
+            field_name = val.decode('utf-8')
           elif key == FieldType.POINTER_TO:
             points_to = val
             is_pointer = True
@@ -79,15 +84,15 @@ class RTReader(object):
           else:
             raise ReaderException('Unknown key {0!r} in <field> map'.format(key))
 
-        # sanity check values
+        # Sanity check values.
         if field_name is None:
           raise ReaderException('Field number {0} did not contain a NAME key'.format(f + 1))
 
-        # see if the read in field exists on the registered class's schema
+        # See if the read in field exists on the registered class's schema.
         if rtschema.is_lazy():
           rtfield = rt.Field(f, field_name, points_to, is_slice, is_self_pointer, is_collection)
         else:
-          # try and find the field on the registered class
+          # Try and find the field on the registered class.
           defn = None
           for fs in rtschema.defn.fields():
             if fs.serial == field_name:
@@ -106,10 +111,10 @@ class RTReader(object):
             if is_collection != defn.is_collection:
               raise ReaderException("Field {0!r} of class {1!r} has IS_COLLECTION as {2} on the stream, but {3} on the class's field".format(field_name, klass_name, is_collection, defn.is_collection))
 
-        # add the field to the schema
+        # Add the field to the schema.
         rtschema.fields.append(rtfield)
 
-    # ensure we found a document class
+    # Ensure we found a document class.
     if rt.doc is None:
       raise ReaderException('Did not read in a __meta__ class')
 
@@ -117,25 +122,26 @@ class RTReader(object):
     # read <stores> ::= [ <store> ]
     #       <store> ::= ( <store_name>, <klass_id>, <store_nelem> )
     for s, (store_name, klass_id, nelem) in enumerate(read):
-      # sanity check on the value of the klass_id
+      store_name = store_name.decode('utf-8')
+      # Sanity check on the value of the klass_id.
       if klass_id >= len(rt.klasses):
         raise ReaderException('klass_id value {0} >= number of klasses ({1})'.format(klass_id, len(rt.klasses)))
 
-      # lookup the store on the Doc class
+      # Lookup the store on the Doc class.
       defn = None
       for ss in self._doc_schema.stores():
         if ss.serial == store_name:
           defn = ss
           break
 
-      # construct and keep track of RTStore
+      # Construct and keep track of RTStore.
       if defn is None:
         rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem)
       else:
         rtstore = rt.Store(s, store_name, rt.klasses[klass_id], nelem=nelem, defn=defn)
       rt.doc.stores.append(rtstore)
 
-      # ensure that the stream store and the static store agree on the klass they're storing
+      # Ensure that the stream store and the static store agree on the klass they're storing.
       if not rtstore.is_lazy():
         store_stored_type = defn.stored_type
         if rt.klasses[klass_id].is_lazy():
@@ -148,20 +154,20 @@ class RTReader(object):
     for klass in rt.klasses:
       for field in klass.fields:
         if field.is_pointer:
-          # sanity check on the value of store_id
+          # Sanity check on the value of store_id.
           store_id = field.points_to
           if store_id >= len(rt.doc.stores):
             raise ReaderException('store_id value {0} >= number of stores ({1})'.format(store_id, len(rt.doc.stores)))
           rtstore = rt.doc.stores[store_id]
 
-          # ensure the field points to a store of the same type as what the store actually is
+          # Ensure the field points to a store of the same type as what the store actually is.
           if not field.is_lazy():
             field_type = field.defn.points_to.stored_type
             store_type = rtstore.defn.stored_type
             if field_type != store_type:
               raise ReaderException('field points at {0} but store contains {1}'.format(field_type, store_type))
 
-          # backfill
+          # Backfill.
           field.points_to = rtstore
 
 
@@ -171,11 +177,9 @@ class AutomagicRTReader(RTReader):
 
   def __call__(self, unpacker):
     rt = super(AutomagicRTReader, self).__call__(unpacker)
-    if not rt:
-      return
-
-    self._do_automagic(rt)
-    self._automagic_count += 1
+    if rt is not None:
+      self._do_automagic(rt)
+      self._automagic_count += 1
     return rt
 
   def _do_automagic(self, rt):
@@ -230,7 +234,7 @@ class AutomagicRTReader(RTReader):
 
 
 class Reader(object):
-  __slots__ = ('_doc_schema', '_unpacker', '_read_headers')
+  __slots__ = ('_doc_schema', '_unpacker', '_read_headers', '_automagic')
 
   def __init__(self, istream, doc_schema_or_doc=None, automagic=False):
     """
@@ -239,11 +243,11 @@ class Reader(object):
     @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
     """
     self._unpacker = msgpack.Unpacker(istream, use_list=True)
+    self._automagic = automagic
     if doc_schema_or_doc is None:
       if not automagic:
         raise ValueError('doc_schema_or_doc can only be None if automagic is True')
-      doc_klass = get_or_create_klass(0, 'Doc', is_doc=True)
-      self._doc_schema = doc_klass.schema()
+      self._doc_schema = None
     elif isinstance(doc_schema_or_doc, DocSchema):
       self._doc_schema = doc_schema_or_doc
     elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
@@ -263,11 +267,19 @@ class Reader(object):
   def __iter__(self):
     return self
 
-  def next(self):
+  def __next__(self):
+    if self._automagic:
+      doc_klass = get_or_create_klass(self._read_headers._automagic_count, 'Doc', is_doc=True)
+      self._doc_schema = doc_klass.schema()
+      self._read_headers._doc_schema = self.doc_schema
     doc = self.read()
     if doc is None:
       raise StopIteration()
+    self._doc_schema = doc._dr_rt.copy_to_schema()
     return doc
+
+  def next(self):
+    return self.__next__()
 
   def read(self):
     rt = self._read_headers(self._unpacker)
@@ -276,11 +288,11 @@ class Reader(object):
     return self._instantiate(rt)
 
   def _instantiate(self, rt):
-    # create the Doc instance and RTManager
+    # Create the Doc instance and RTManager.
     doc = self._doc_schema.defn(**rt.doc.build_kwargs())
     self._create_stores(rt, doc)
 
-    # read instances
+    # Read instances.
     self._read_doc_instance(rt, doc)
     self._read_instances(rt, doc)
     doc._dr_rt = rt
@@ -302,7 +314,7 @@ class Reader(object):
 
   def _process_instance(self, rtschema, doc, instance, obj, store):
     # <instance> ::= { <field_id> : <obj_val> }
-    for key, val in instance.iteritems():
+    for key, val in six.iteritems(instance):
       rtfield = rtschema.fields[key]
       if rtfield.is_lazy():
         if obj._dr_lazy is None:

@@ -1,9 +1,11 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 
 from schwa import dr
 
-from utils import write_read
+from testutils import write_read
 
 
 class Doc1(dr.Doc):

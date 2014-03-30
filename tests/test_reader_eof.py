@@ -1,7 +1,10 @@
-import StringIO
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 
 from schwa import dr
+import six
 
 
 class X(dr.Ann):
@@ -13,7 +16,7 @@ class Doc(dr.Doc):
 
 
 def create_stream():
-  stream = StringIO.StringIO()
+  stream = six.BytesIO()
   writer = dr.Writer(stream, Doc)
 
   d = Doc()
@@ -32,7 +35,7 @@ def create_stream():
 
 class Test(unittest.TestCase):
   def test_empty__iter(self):
-    stream = StringIO.StringIO()
+    stream = six.BytesIO()
     count = 0
     reader = dr.Reader(stream, Doc)
     for doc in reader:
@@ -41,7 +44,7 @@ class Test(unittest.TestCase):
     self.assertEquals(count, 0)
 
   def test_empty__read(self):
-    stream = StringIO.StringIO()
+    stream = six.BytesIO()
     reader = dr.Reader(stream, Doc)
     doc = reader.read()
     self.assertIsNone(doc)

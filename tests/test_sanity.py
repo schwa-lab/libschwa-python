@@ -1,12 +1,14 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
 """
 Tests ensuring that what is written out is identical to what is read in.
 """
+from __future__ import absolute_import, print_function, unicode_literals
 from unittest import TestCase
 
 from schwa import dr
 
-from utils import write_read
+from testutils import write_read
 
 
 class Annot(dr.Ann):
@@ -50,14 +52,14 @@ class DifferentModelTests(TestCase):
   def test_various(self):
     doc = DocWithField()
     doc = write_read(doc, DocWithField)
-    doc.field = 'foo'
+    doc.field = b'foo'
     doc = write_read(doc, DocWithField, DocWithoutFields)
     doc = write_read(doc, DocWithoutFields, DocWithAnnotsAndPointer)
     doc.annots.create()
     doc.special_annot = doc.annots[-1]
     doc = write_read(doc, DocWithAnnotsAndPointer, DocWithoutFields)
     doc = write_read(doc, DocWithoutFields, DocWithField)
-    self.assertEquals(doc.field, 'foo')
+    self.assertEquals(doc.field, b'foo')
     doc = write_read(doc, DocWithField, DocWithoutFields)
     doc = write_read(doc, DocWithoutFields, DocWithAnnotsAndPointer)
     self.assertEquals(len(doc.annots), 1)

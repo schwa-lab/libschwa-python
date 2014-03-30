@@ -1,4 +1,7 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+
 __all__ = ['RTField', 'RTStore', 'RTAnn', 'RTManager', 'build_rt', 'merge_rt']
 
 
@@ -13,6 +16,12 @@ class RTField(object):
     self.is_slice = is_slice
     self.is_self_pointer = is_self_pointer
     self.is_collection = is_collection
+
+  def __repr__(self):
+    return str(self)
+
+  def __str__(self):
+    return 'RTField(field_id={}, serial={!r})'.format(self.field_id, self.serial)
 
   def is_lazy(self):
     return self.defn is None
@@ -32,6 +41,12 @@ class RTStore(object):
     self.nelem = nelem
     self.defn = defn  # StoreSchema
     self.lazy = lazy
+
+  def __repr__(self):
+    return str(self)
+
+  def __str__(self):
+    return 'RTStore(store_id={}, serial={!r}, klass={})'.format(self.store_id, self.serial, self.klass)
 
   def is_lazy(self):
     return self.defn is None
@@ -70,7 +85,7 @@ class AutomagicRTAnn(RTAnn):
   def __init__(self, *args, **kwargs):
     super(AutomagicRTAnn, self).__init__(*args, **kwargs)
     self._init_kwargs = {}
-  
+
   def build_kwargs(self):
     return {k: v() for k, v in self._init_kwargs.items()}
 
@@ -114,10 +129,10 @@ def _find_max_and_known(collection, id_attr):
 
 
 def _merge_rtschema_fields(rtschema, ann_schema, rtstore_map):
-  # discover max known field_id
+  # Discover max known field_id.
   field_id, known_fields = _find_max_and_known(rtschema.fields, 'field_id')
 
-  # construct the RTField's
+  # Construct the RTFields.
   for field_schema in ann_schema.fields():
     rtfield = known_fields.get(field_schema.name)
     if rtfield is None:
@@ -141,11 +156,11 @@ def merge_rt(rt, doc_schema):
   @param doc_schema a DocSchema object from which to merge with the given RTManager instance
   @return the merged RTManager object
   """
-  # discover known klasses and stores
+  # Discover known klasses and stores.
   klass_id, known_klasses = _find_max_and_known(rt.klasses, 'klass_id')
   store_id, known_stores = _find_max_and_known(rt.doc.stores, 'store_id')
 
-  # construct the RTStore's
+  # Construct the RTStores.
   rtstore_map = {}  # { StoreSchema : RTStore }
   for store_schema in doc_schema.stores():
     rtstore = known_stores.get(store_schema.name)
@@ -161,10 +176,10 @@ def merge_rt(rt, doc_schema):
     rt.doc.stores.sort(key=lambda s: s.store_id)
     assert rt.doc.stores[-1].store_id + 1 == len(rt.doc.stores)
 
-  # construct the documents RTField's
+  # Construct the documents RTFields.
   _merge_rtschema_fields(rt.doc, doc_schema, rtstore_map)
 
-  # construct the RTAnn's
+  # Construct the RTAnns.
   rtann_map = {}  # { AnnSchema : RTAnn }
   for ann_schema in doc_schema.klasses():
     rtschema = known_klasses.get(ann_schema.name)
@@ -177,7 +192,7 @@ def merge_rt(rt, doc_schema):
     _merge_rtschema_fields(rtschema, ann_schema, rtstore_map)
     rtann_map[ann_schema] = rtschema
 
-  # back-fill the RTStores' RTSchema pointers now that they exist
+  # Back-fill the RTStores' RTSchema pointers now that they exist.
   for store_schema in doc_schema.stores():
     rtstore = rtstore_map[store_schema]
     if rtstore.klass is None:

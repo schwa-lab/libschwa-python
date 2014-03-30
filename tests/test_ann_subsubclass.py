@@ -1,9 +1,11 @@
-# vim: set ts=2 et:
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
 import unittest
 
 from schwa import dr
 
-from utils import write_read
+from testutils import write_read
 
 
 class Ann1(dr.Ann):
@@ -22,13 +24,13 @@ class Doc(dr.Doc):
 class TestCase(unittest.TestCase):
   def test(self):
     d = Doc()
-    d.ann1s.create(foo='a')
-    d.ann2s.create(foo='z', bar=1)
+    d.ann1s.create(foo=b'a')
+    d.ann2s.create(foo=b'z', bar=1)
 
     d = write_read(d, Doc)
 
     self.assertEqual(len(d.ann1s), 1)
     self.assertEqual(len(d.ann2s), 1)
-    self.assertEqual(d.ann1s[0].foo, 'a')
-    self.assertEqual(d.ann2s[0].foo, 'z')
+    self.assertEqual(d.ann1s[0].foo, b'a')
+    self.assertEqual(d.ann2s[0].foo, b'z')
     self.assertEqual(d.ann2s[0].bar, 1)

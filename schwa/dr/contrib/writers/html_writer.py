@@ -1,11 +1,14 @@
-# -*- coding: utf-8 -*-
-# vim: set ts=2 sw=2 sts=2 et:
-from collections import defaultdict
+# vim: set et nosi ai ts=2 sts=2 sw=2:
+# coding: utf-8
+from __future__ import absolute_import, print_function, unicode_literals
+import collections
 import re
 import sys
 from xml.etree import ElementTree
 
 from schwa import dr
+import six
+from six.move import xrange
 
 from .writer import AbstractWriter
 
@@ -22,10 +25,10 @@ class NELinkedHTMLWriter(AbstractWriter):
   @dr.method_requires_decoration(dr.decorators.reverse_slices('paragraphs', 'sentences', 'span', pointer_attr='paragraph'))
   @dr.method_requires_decoration(dr.decorators.reverse_slices('sentences', 'tokens', 'span', pointer_attr='sentence'))
   def write(self, doc):
-    doc_attrs = dict((a, unicode(getattr(doc, a))) for a in self.doc_attrs)
+    doc_attrs = dict((a, six.text_type(getattr(doc, a))) for a in self.doc_attrs)
     doc_elem = ElementTree.Element('doc', attrib=doc_attrs)
     # TODO Use decorator functions for this...
-    sentences_to_paragraphs = defaultdict(list)
+    sentences_to_paragraphs = collections.defaultdict(list)
     for s in doc.sentences:
       sentences_to_paragraphs[s].append(getattr(s, 'paragraph', None))
     last_t = None

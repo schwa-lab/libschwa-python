@@ -2,7 +2,7 @@
 #ifndef SEQ_STREAM_H_
 #define SEQ_STREAM_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <vector>
 
@@ -28,10 +28,10 @@ namespace schwa {
       PySeqStream(void) : PyStream() { }
       virtual ~PySeqStream(void);
 
-      virtual void add(Type type, const char *raw, offset_type begin, offset_type len, const char *norm=0) override;
-      virtual void error(const char *raw, offset_type begin, offset_type len) override { }
+      virtual void add(Type type, const char *raw, size_t begin, size_t len, const char *norm=nullptr) override;
+      virtual void error(const char *raw, size_t begin, size_t len) override { }
 
-      PyObject *get(void) override;
+      PyObject *return_value(void) override;
 
       virtual void begin_sentence(void) override { }
       virtual void end_sentence(void) override;
