@@ -28,6 +28,7 @@ namespace schwa {
 
     protected:
       PyObject *_obj;
+      PyObject *_unhandled;
       PyObject *_methods[to_underlying(Method::UNHANDLED) + 1];  // One for each value of Method.
       const char *_method_names[to_underlying(Method::UNHANDLED) + 1];
 

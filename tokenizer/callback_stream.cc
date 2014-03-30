@@ -13,7 +13,7 @@ namespace tokenizer {
 // ============================================================================
 // PyCallObjectStream
 // ============================================================================
-PyCallObjectStream::PyCallObjectStream(PyObject *obj) : _obj(obj) {
+PyCallObjectStream::PyCallObjectStream(PyObject *obj) : _obj(obj), _unhandled(nullptr) {
   Py_INCREF(_obj);
 
   // Ensure the initial value for all function pointers is NULL so the destructor behaves corectly.
@@ -69,6 +69,8 @@ PyCallObjectStream::init_method(const char *const method_name, const Method meth
   // Store the method in the lookup table.
   _methods[to_underlying(method)] = func;
   _method_names[to_underlying(method)] = method_name;
+  if (method == Method::UNHANDLED)
+    _unhandled = func;
 }
 
 
@@ -77,7 +79,7 @@ PyCallObjectStream::call(const Method method) {
   PyObject *const func = _methods[to_underlying(method)];
   PyObject *ret;
   if (func == nullptr)
-    ret = PyObject_CallFunction(func, (char *)"s", _method_names[to_underlying(method)]);
+    ret = PyObject_CallFunction(_unhandled, (char *)"s", _method_names[to_underlying(method)]);
   else
     ret = PyObject_CallFunctionObjArgs(func);
   if (ret == nullptr)
@@ -91,7 +93,7 @@ PyCallObjectStream::call_i(const Method method, const int i) {
   PyObject *const func = _methods[to_underlying(method)];
   PyObject *ret;
   if (func == nullptr)
-    ret = PyObject_CallFunction(func, (char *)"si", _method_names[to_underlying(method)], i);
+    ret = PyObject_CallFunction(_unhandled, (char *)"si", _method_names[to_underlying(method)], i);
   else
     ret = PyObject_CallFunction(func, (char *)"i", i);
   if (ret == nullptr)
@@ -115,7 +117,7 @@ PyCallObjectStream::add(Type type, const char *raw, size_t begin, size_t len, co
   PyObject *ret;
   if (func == nullptr) {
     if (norm)
-      ret = PyObject_CallFunction(func, (char *)"sns#s", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen, norm);
+      ret = PyObject_CallFunction(_unhandled, (char *)"sns#s", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen, norm);
     else
       ret = PyObject_CallFunction(func, (char *)"sns#", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen);
   }
@@ -139,7 +141,7 @@ PyCallObjectStream::error(const char *raw, size_t begin, size_t len) {
 
   PyObject *ret;
   if (func == nullptr)
-    ret = PyObject_CallFunction(func, (char *)"sns#", _method_names[to_underlying(Method::ERROR)], pybegin, raw, pylen);
+    ret = PyObject_CallFunction(_unhandled, (char *)"sns#", _method_names[to_underlying(Method::ERROR)], pybegin, raw, pylen);
   else
     ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
   if (ret == nullptr)
