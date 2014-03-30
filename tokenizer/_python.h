@@ -11,10 +11,14 @@
   #define SCHWA_PY_BYTES_TYPE (PyBytes_Type)
   #define SCHWA_PY_MODULE_INIT_RETURN_ERROR(m) return nullptr
   #define SCHWA_PY_MODULE_INIT_RETURN_SUCCESS(m) return m
+  #define SCHWA_PY_BINARY_TYPE_NAME "bytes"
+  #define SCHWA_PY_TEXT_TYPE_NAME "str"
 #else
   #define SCHWA_PY_BYTES_TYPE (PyString_Type)
   #define SCHWA_PY_MODULE_INIT_RETURN_ERROR(m) return
   #define SCHWA_PY_MODULE_INIT_RETURN_SUCCESS(m) return
+  #define SCHWA_PY_BINARY_TYPE_NAME "str"
+  #define SCHWA_PY_TEXT_TYPE_NAME "unicode"
 #endif
 
 #endif  // SCHWA__PYTHON_H_

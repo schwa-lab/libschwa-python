@@ -62,9 +62,9 @@ static const char *const PyTokenizer_tokenize__doc =
   "  source: a UTF-8 byte string\n"
   "\n"
   "  dest: the output method, one of the following Python types:\n"
-  "    - str (default): outputs a UTF-8 string with '\\n\\n', '\\n' and ' ' as\n"
+  "    - " SCHWA_PY_BINARY_TYPE_NAME " (default): outputs a UTF-8 string with '\\n\\n', '\\n' and ' ' as\n"
   "      paragraph, sentence and token delimiters respectively\n"
-  "    - unicode: like str, but with UTF-8 decoded\n"
+  "    - " SCHWA_PY_TEXT_TYPE_NAME ": like " SCHWA_PY_BINARY_TYPE_NAME ", but with UTF-8 decoded\n"
   "    - list: outputs a list of paragraphs, each containing a list of sentences,\n"
   "      each containing a list of (offset, raw_token, [normalised_token]) tuples\n"
   "    or:\n"
@@ -89,7 +89,7 @@ static const char *const PyTokenizer_tokenize__doc =
   "\n"
   "  normalise: a boolean (default True) indicating whether to perform\n"
   "    normalisation on the output (such as directed quotes, all dashes as --, and\n"
-  "    * to indicate list items). Only applies when dest is str or unicode.\n"
+  "    * to indicate list items). Only applies when dest is a string-like value.\n"
   "\n"
   "  mmap: a boolean (default False) indicating whether to process the file\n"
   "    memory-mapped, when the filename argument is used.";
@@ -115,7 +115,7 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     return PyErr_Format(PyExc_TypeError, "tokenize() requires either a source or filename argument");
   if (pysrc) {
     if (PyUnicode_Check(pysrc))
-      return PyErr_Format(PyExc_TypeError, "tokenize() does not accept unicode/str objects, use .encode('utf-8')");
+      return PyErr_Format(PyExc_TypeError, "tokenize() does not accept " SCHWA_PY_TEXT_TYPE_NAME " objects, use .encode('utf-8')");
     else if (!PyObject_CheckBuffer(pysrc))
       return PyErr_Format(PyExc_TypeError, "tokenize() source must support the buffer interface");
   }
