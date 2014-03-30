@@ -22,7 +22,13 @@ void
 PySeqStream::add(Type type, const char *raw, size_t begin, size_t len, const char *norm) {
   const Py_ssize_t pybegin = begin;
   const Py_ssize_t pylen = len;
-  PyObject *tuple = Py_BuildValue("ns#s", pybegin, raw, pylen, norm);
+
+#ifdef IS_PY3K
+  const char *const fmt = "ny#y";
+#else
+  const char *const fmt = "ns#s";
+#endif
+  PyObject *const tuple = Py_BuildValue(fmt, pybegin, raw, pylen, norm);
   _tokens.push_back(tuple);
 }
 

@@ -79,8 +79,14 @@ void
 PyCallObjectStream::call(const Method method) {
   PyObject *const func = _methods[to_underlying(method)];
   PyObject *ret;
-  if (func == nullptr)
-    ret = PyObject_CallFunction(_unhandled, (char *)"s", _method_names[to_underlying(method)]);
+  if (func == nullptr) {
+#ifdef IS_PY3K
+    const char *const fmt = "y";
+#else
+    const char *const fmt = "s";
+#endif
+    ret = PyObject_CallFunction(_unhandled, (char *)fmt, _method_names[to_underlying(method)]);
+  }
   else
     ret = PyObject_CallFunction(func, nullptr);
   if (ret == nullptr)
@@ -93,8 +99,14 @@ void
 PyCallObjectStream::call_i(const Method method, const int i) {
   PyObject *const func = _methods[to_underlying(method)];
   PyObject *ret;
-  if (func == nullptr)
-    ret = PyObject_CallFunction(_unhandled, (char *)"si", _method_names[to_underlying(method)], i);
+  if (func == nullptr) {
+#ifdef IS_PY3K
+    const char *const fmt = "yi";
+#else
+    const char *const fmt = "si";
+#endif
+    ret = PyObject_CallFunction(_unhandled, (char *)fmt, _method_names[to_underlying(method)], i);
+  }
   else
     ret = PyObject_CallFunction(func, (char *)"i", i);
   if (ret == nullptr)
@@ -117,16 +129,40 @@ PyCallObjectStream::add(Type type, const char *raw, size_t begin, size_t len, co
 
   PyObject *ret;
   if (func == nullptr) {
-    if (norm)
-      ret = PyObject_CallFunction(_unhandled, (char *)"sns#s", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen, norm);
-    else
-      ret = PyObject_CallFunction(_unhandled, (char *)"sns#", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen);
+    if (norm) {
+#ifdef IS_PY3K
+      const char *const fmt = "yny#y";
+#else
+      const char *const fmt = "sns#s";
+#endif
+      ret = PyObject_CallFunction(_unhandled, (char *)fmt, _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen, norm);
+    }
+    else {
+#ifdef IS_PY3K
+      const char *const fmt = "yny#";
+#else
+      const char *const fmt = "sns#";
+#endif
+      ret = PyObject_CallFunction(_unhandled, (char *)fmt, _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen);
+    }
   }
   else {
-    if (norm)
-      ret = PyObject_CallFunction(func, (char *)"ns#s", pybegin, raw, pylen, norm);
-    else
-      ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
+    if (norm) {
+#ifdef IS_PY3K
+      const char *const fmt = "ny#y";
+#else
+      const char *const fmt = "ns#s";
+#endif
+      ret = PyObject_CallFunction(func, (char *)fmt, pybegin, raw, pylen, norm);
+    }
+    else {
+#ifdef IS_PY3K
+      const char *const fmt = "ny#";
+#else
+      const char *const fmt = "ns#";
+#endif
+      ret = PyObject_CallFunction(func, (char *)fmt, pybegin, raw, pylen);
+    }
   }
   if (ret == nullptr)
     throw PyRaise();
@@ -141,10 +177,22 @@ PyCallObjectStream::error(const char *raw, size_t begin, size_t len) {
   const Py_ssize_t pylen = len;
 
   PyObject *ret;
-  if (func == nullptr)
-    ret = PyObject_CallFunction(_unhandled, (char *)"sns#", _method_names[to_underlying(Method::ERROR)], pybegin, raw, pylen);
-  else
-    ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
+  if (func == nullptr) {
+#ifdef IS_PY3K
+    const char *const fmt = "yny#";
+#else
+    const char *const fmt = "sns#";
+#endif
+    ret = PyObject_CallFunction(_unhandled, (char *)fmt, _method_names[to_underlying(Method::ERROR)], pybegin, raw, pylen);
+  }
+  else {
+#ifdef IS_PY3K
+    const char *const fmt = "ny#";
+#else
+    const char *const fmt = "ns#";
+#endif
+    ret = PyObject_CallFunction(func, (char *)fmt, pybegin, raw, pylen);
+  }
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -165,7 +213,12 @@ PyCallFuncStream::~PyCallFuncStream(void) {
 
 void
 PyCallFuncStream::call(const char *type) {
-  PyObject *ret = PyObject_CallFunction(_func, (char *)"s", type);
+#ifdef IS_PY3K
+  const char *const fmt = "y";
+#else
+  const char *const fmt = "s";
+#endif
+  PyObject *ret = PyObject_CallFunction(_func, (char *)fmt, type);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -174,7 +227,12 @@ PyCallFuncStream::call(const char *type) {
 
 void
 PyCallFuncStream::call_i(const char *type, const int i) {
-  PyObject *ret = PyObject_CallFunction(_func, (char *)"si", type, i);
+#ifdef IS_PY3K
+  const char *const fmt = "yi";
+#else
+  const char *const fmt = "si";
+#endif
+  PyObject *ret = PyObject_CallFunction(_func, (char *)fmt, type, i);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -193,10 +251,22 @@ PyCallFuncStream::add(Type type, const char *raw, size_t begin, size_t len, cons
   const Py_ssize_t pylen = len;
 
   PyObject *ret;
-  if (norm)
-    ret = PyObject_CallFunction(_func, (char *)"sns#s", "token", pybegin, raw, pylen, norm);
-  else
-    ret = PyObject_CallFunction(_func, (char *)"sns#", "token", pybegin, raw, pylen);
+  if (norm) {
+#ifdef IS_PY3K
+    const char *const fmt = "yny#y";
+#else
+    const char *const fmt = "sns#s";
+#endif
+    ret = PyObject_CallFunction(_func, (char *)fmt, "token", pybegin, raw, pylen, norm);
+  }
+  else {
+#ifdef IS_PY3K
+    const char *const fmt = "yny#";
+#else
+    const char *const fmt = "sns#";
+#endif
+    ret = PyObject_CallFunction(_func, (char *)fmt, "token", pybegin, raw, pylen);
+  }
 
   if (ret == nullptr)
     throw PyRaise();
@@ -209,7 +279,12 @@ PyCallFuncStream::error(const char *raw, size_t begin, size_t len) {
   const Py_ssize_t pybegin = begin;
   const Py_ssize_t pylen = len;
 
-  PyObject *ret = PyObject_CallFunction(_func, (char *)"sns#", "error", pybegin, raw, pylen);
+#ifdef IS_PY3K
+  const char *const fmt = "yny#";
+#else
+  const char *const fmt = "sns#";
+#endif
+  PyObject *ret = PyObject_CallFunction(_func, (char *)fmt, "error", pybegin, raw, pylen);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
