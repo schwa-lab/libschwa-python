@@ -4,8 +4,9 @@
 
 #include "_python.h"
 
-#include <exception>
 #include <string>
+
+#include <schwa/exception.h>
 
 
 namespace schwa {
@@ -18,12 +19,11 @@ namespace schwa {
     };
 
 
-    class PyError : public std::exception {
+    class PyError : public Exception {
     public:
-      PyObject *except;
-      std::string msg;
+      PyObject *const except;
 
-      PyError(PyObject *except, const std::string &msg) : except(except), msg(msg) { }
+      PyError(PyObject *except, const std::string &msg) : Exception(msg), except(except) { }
       virtual ~PyError(void) throw() {}
     };
 

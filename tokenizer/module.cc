@@ -189,8 +189,20 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   catch (tok::PyRaise &e) {
     return nullptr;
   }
+  catch (tok::TypeError &e) {
+    PyErr_SetString(PyExc_TypeError, e.what());
+    return nullptr;
+  }
+  catch (tok::ValueError &e) {
+    PyErr_SetString(PyExc_ValueError, e.what());
+    return nullptr;
+  }
   catch (schwa::IOException &e) {
     PyErr_SetString(PyExc_IOError, e.what());
+    return nullptr;
+  }
+  catch (schwa::Exception &e) {
+    PyErr_SetString(PyExc_Exception, e.what());
     return nullptr;
   }
 }
