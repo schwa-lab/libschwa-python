@@ -94,7 +94,7 @@ static const char *const PyTokenizer_tokenize__doc =
   "  mmap: a boolean (default False) indicating whether to process the file\n"
   "    memory-mapped, when the filename argument is used.";
 
-PyObject *
+static PyObject *
 PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
   // Setup default values for kwarg parsing.
   PyObject *pysrc = nullptr;
@@ -293,7 +293,7 @@ _inittokenizer(void) {
   module_TokenError = PyErr_NewException((char *)"tokenizer.TokenError", nullptr, nullptr);
   if (module_TokenError == nullptr)
     return nullptr;
-  Py_INCREF(&module_TokenError);
+  Py_INCREF(module_TokenError);
   if (PyModule_AddObject(m, "TokenError", module_TokenError) != 0)
     return nullptr;
 
