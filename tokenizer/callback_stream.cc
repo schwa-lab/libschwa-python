@@ -53,13 +53,11 @@ PyCallObjectStream::init_method(const char *const method_name, const Method meth
       return;
 
     // Fallback to the unhandled method, ensuring it exists.
-    func = _methods[to_underlying(Method::UNHANDLED)];
-    if (func == nullptr) {
+    if (_methods[to_underlying(Method::UNHANDLED)] == nullptr) {
       std::ostringstream ss;
       ss << "Neither methods '" << method_name << "' or 'unhandled' exist.";
       throw TypeError(ss.str());
     }
-    Py_INCREF(func);
   }
   else if (!PyCallable_Check(func)) {  // Ensure the found attr is callable.
     Py_DECREF(func);
@@ -70,13 +68,18 @@ PyCallObjectStream::init_method(const char *const method_name, const Method meth
 
   // Store the method in the lookup table.
   _methods[to_underlying(method)] = func;
+  _method_names[to_underlying(method)] = method_name;
 }
 
 
 void
 PyCallObjectStream::call(const Method method) {
   PyObject *const func = _methods[to_underlying(method)];
-  PyObject *ret = PyObject_CallFunctionObjArgs(func);
+  PyObject *ret;
+  if (func == nullptr)
+    ret = PyObject_CallFunction(func, (char *)"s", _method_names[to_underlying(method)]);
+  else
+    ret = PyObject_CallFunctionObjArgs(func);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -86,7 +89,11 @@ PyCallObjectStream::call(const Method method) {
 void
 PyCallObjectStream::call_i(const Method method, const int i) {
   PyObject *const func = _methods[to_underlying(method)];
-  PyObject *ret = PyObject_CallFunction(func, (char *)"i", i);
+  PyObject *ret;
+  if (func == nullptr)
+    ret = PyObject_CallFunction(func, (char *)"si", _method_names[to_underlying(method)], i);
+  else
+    ret = PyObject_CallFunction(func, (char *)"i", i);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -106,11 +113,18 @@ PyCallObjectStream::add(Type type, const char *raw, size_t begin, size_t len, co
   const Py_ssize_t pylen = len;
 
   PyObject *ret;
-  if (norm)
-    ret = PyObject_CallFunction(func, (char *)"ns#s", pybegin, raw, pylen, norm);
-  else
-    ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
-
+  if (func == nullptr) {
+    if (norm)
+      ret = PyObject_CallFunction(func, (char *)"sns#s", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen, norm);
+    else
+      ret = PyObject_CallFunction(func, (char *)"sns#", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen);
+  }
+  else {
+    if (norm)
+      ret = PyObject_CallFunction(func, (char *)"ns#s", pybegin, raw, pylen, norm);
+    else
+      ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
+  }
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -123,7 +137,11 @@ PyCallObjectStream::error(const char *raw, size_t begin, size_t len) {
   const Py_ssize_t pybegin = begin;
   const Py_ssize_t pylen = len;
 
-  PyObject *ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
+  PyObject *ret;
+  if (func == nullptr)
+    ret = PyObject_CallFunction(func, (char *)"sns#", _method_names[to_underlying(Method::ERROR)], pybegin, raw, pylen);
+  else
+    ret = PyObject_CallFunction(func, (char *)"ns#", pybegin, raw, pylen);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);

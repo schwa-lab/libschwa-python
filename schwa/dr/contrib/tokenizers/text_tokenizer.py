@@ -46,11 +46,11 @@ class TextTokenizer(object):
         # No tokens
         pass
 
-  def unhandled(self, method_name):
-    log.info('%r unhandled during tokenization' % method_name)
+  def unhandled(self, method_name, *args):
+    log.info('%r unhandled during tokenization (%r)', method_name, args)
 
   def error(self, start, raw):
-    log.error('Error processing %r at %d' % (raw, start))
+    log.error('Error processing %r at %d', raw, start)
 
   def add(self, start, raw, norm=None):
     if self.save_spans:

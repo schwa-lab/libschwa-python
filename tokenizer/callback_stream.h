@@ -29,6 +29,7 @@ namespace schwa {
     protected:
       PyObject *_obj;
       PyObject *_methods[to_underlying(Method::UNHANDLED) + 1];  // One for each value of Method.
+      const char *_method_names[to_underlying(Method::UNHANDLED) + 1];
 
       void init_method(const char *method_name, Method method);
 
