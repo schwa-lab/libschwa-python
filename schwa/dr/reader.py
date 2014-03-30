@@ -32,7 +32,7 @@ class RTReader(object):
     try:
       version = unpacker.unpack()
     except msgpack.OutOfData:
-      return
+      return None
     # Validate wire protocol version.
     if version != self.WIRE_VERSION:
       raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}. Ensure the input is not plain text.'.format(version, self.WIRE_VERSION))
@@ -177,11 +177,9 @@ class AutomagicRTReader(RTReader):
 
   def __call__(self, unpacker):
     rt = super(AutomagicRTReader, self).__call__(unpacker)
-    if not rt:
-      return
-
-    self._do_automagic(rt)
-    self._automagic_count += 1
+    if rt is not None:
+      self._do_automagic(rt)
+      self._automagic_count += 1
     return rt
 
   def _do_automagic(self, rt):
@@ -236,7 +234,7 @@ class AutomagicRTReader(RTReader):
 
 
 class Reader(object):
-  __slots__ = ('_doc_schema', '_unpacker', '_read_headers')
+  __slots__ = ('_doc_schema', '_unpacker', '_read_headers', '_automagic')
 
   def __init__(self, istream, doc_schema_or_doc=None, automagic=False):
     """
@@ -245,11 +243,11 @@ class Reader(object):
     @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
     """
     self._unpacker = msgpack.Unpacker(istream, use_list=True)
+    self._automagic = automagic
     if doc_schema_or_doc is None:
       if not automagic:
         raise ValueError('doc_schema_or_doc can only be None if automagic is True')
-      doc_klass = get_or_create_klass(0, 'Doc', is_doc=True)
-      self._doc_schema = doc_klass.schema()
+      self._doc_schema = None
     elif isinstance(doc_schema_or_doc, DocSchema):
       self._doc_schema = doc_schema_or_doc
     elif inspect.isclass(doc_schema_or_doc) and issubclass(doc_schema_or_doc, Doc):
@@ -270,9 +268,14 @@ class Reader(object):
     return self
 
   def __next__(self):
+    if self._automagic:
+      doc_klass = get_or_create_klass(self._read_headers._automagic_count, 'Doc', is_doc=True)
+      self._doc_schema = doc_klass.schema()
+      self._read_headers._doc_schema = self.doc_schema
     doc = self.read()
     if doc is None:
       raise StopIteration()
+    self._doc_schema = doc._dr_rt.copy_to_schema()
     return doc
 
   def next(self):

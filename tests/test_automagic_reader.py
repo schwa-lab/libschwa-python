@@ -48,13 +48,17 @@ class TestCase(unittest.TestCase):
     orig.seek(0)
 
     reader = dr.Reader(orig, automagic=True)
-    docs = list(reader)
-    self.assertEqual(len(docs), 2)
+    doc0 = reader.next()
+    doc0_schema = reader.doc_schema
+    doc1 = reader.next()
+    doc1_schema = reader.doc_schema
+    with self.assertRaises(StopIteration):
+      reader.next()
 
     rewritten = six.BytesIO()
-    writer = dr.Writer(rewritten, reader.doc_schema)
 
-    doc = docs[0]
+    writer = dr.Writer(rewritten, doc0_schema)
+    doc = doc0
     self.assertTrue(hasattr(doc, 'tokens'))
     self.assertTrue(hasattr(doc, 'sents'))
     self.assertEqual(len(doc.tokens), 0)
@@ -62,7 +66,8 @@ class TestCase(unittest.TestCase):
     self.assertEqual(doc.adjectives, [])
     writer.write(doc)
 
-    doc = docs[1]
+    writer = dr.Writer(rewritten, doc1_schema)
+    doc = doc1
     self.assertTrue(hasattr(doc, 'tokens'))
     self.assertTrue(hasattr(doc, 'sents'))
     self.assertEqual(len(doc.tokens), 5)
@@ -93,9 +98,14 @@ class TestCase(unittest.TestCase):
     orig.seek(0)
 
     reader = dr.Reader(orig, automagic=True)
+    reader.next()
+    reader.next()
+    doc1_schema = reader.doc_schema
+    with self.assertRaises(StopIteration):
+      reader.next()
 
     # The following works if reader.doc_schema is replaced with docs[0]._dr_rt.copy_to_schema()
-    self.assertSchemaEqual(Doc.schema(), reader.doc_schema)
+    self.assertSchemaEqual(Doc.schema(), doc1_schema)
 
   def assertSchemaEqual(self, s1, s2, sub_schemas=('klasses', 'stores', 'fields'), fields=('is_pointer', 'is_self_pointer', 'is_slice', 'is_collection', 'pointer_to')):
     fields1 = {}
