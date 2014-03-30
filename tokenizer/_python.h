@@ -9,12 +9,10 @@
 
 #ifdef IS_PY3K
   #define SCHWA_PY_BYTES_TYPE (PyBytes_Type)
-  #define SCHWA_PY_CHECK_BUFFER(obj) PyObject_CheckBuffer(obj)
   #define SCHWA_PY_MODULE_INIT_RETURN_ERROR(m) return nullptr
   #define SCHWA_PY_MODULE_INIT_RETURN_SUCCESS(m) return m
 #else
   #define SCHWA_PY_BYTES_TYPE (PyString_Type)
-  #define SCHWA_PY_CHECK_BUFFER(obj) PyBuffer_Check(obj)
   #define SCHWA_PY_MODULE_INIT_RETURN_ERROR(m) return
   #define SCHWA_PY_MODULE_INIT_RETURN_SUCCESS(m) return
 #endif

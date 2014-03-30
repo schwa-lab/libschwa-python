@@ -115,8 +115,8 @@ PyTokenizer_tokenize(PyTokenizer *self, PyObject *args, PyObject *kwargs) {
     return PyErr_Format(PyExc_TypeError, "tokenize() requires either a source or filename argument");
   if (pysrc) {
     if (PyUnicode_Check(pysrc))
-      return PyErr_Format(PyExc_TypeError, "tokenize() does not accept unicode objects, use unicode.encode('utf-8')");
-    else if (!SCHWA_PY_CHECK_BUFFER(pysrc))
+      return PyErr_Format(PyExc_TypeError, "tokenize() does not accept unicode/str objects, use .encode('utf-8')");
+    else if (!PyObject_CheckBuffer(pysrc))
       return PyErr_Format(PyExc_TypeError, "tokenize() source must support the buffer interface");
   }
   if (buffer_size <= 0)
