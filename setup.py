@@ -7,7 +7,10 @@ import subprocess
 from distutils import log
 from setuptools import Extension, setup
 
-VERSION = open(os.path.join(os.path.dirname(__file__), 'VERSION')).read().strip()
+
+def read_local_file(filename):
+  with open(os.path.join(os.path.dirname(__file__), filename)) as f:
+    return f.read().strip()
 
 
 def pkg_config(*args):
@@ -62,10 +65,13 @@ def tokenizer_ext():
   )
 
 
+README = read_local_file('README')
+VERSION = read_local_file('VERSION')
 setup(
     name='libschwa-python',
     version=VERSION,
     description='Python bindings for the Schwa Lab NLP tools (libschwa)',
+    long_description=README,
     author='Schwa Lab',
     author_email='schwa-lab@it.usyd.edu.au',
     maintainer='Tim Dawborn',
@@ -96,7 +102,7 @@ setup(
     tests_require=[
         'nose',
     ],
-    categories=[
+    classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Intended Audience :: Developers',
