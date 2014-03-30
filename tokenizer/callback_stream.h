@@ -2,7 +2,7 @@
 #ifndef CALLBACK_STREAM_H_
 #define CALLBACK_STREAM_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <schwa/_base.h>
 #include <schwa/utils/enums.h>

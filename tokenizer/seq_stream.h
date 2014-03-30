@@ -2,7 +2,7 @@
 #ifndef SEQ_STREAM_H_
 #define SEQ_STREAM_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <vector>
 

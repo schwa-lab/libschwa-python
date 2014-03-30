@@ -2,7 +2,7 @@
 #ifndef EXCEPTION_H_
 #define EXCEPTION_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <exception>
 #include <string>

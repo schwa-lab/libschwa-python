@@ -1,6 +1,4 @@
 /* -*- Mode: C++; indent-tabs-mode: nil -*- */
-#define PY_SSIZE_T_CLEAN
-
 #include "seq_stream.h"
 
 

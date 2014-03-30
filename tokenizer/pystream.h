@@ -2,7 +2,7 @@
 #ifndef PYSTREAM_H_
 #define PYSTREAM_H_
 
-#include <Python.h>
+#include "_python.h"
 
 #include <schwa/_base.h>
 #include <schwa/tokenizer/stream.h>
