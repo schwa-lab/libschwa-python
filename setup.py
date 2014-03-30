@@ -71,7 +71,7 @@ setup(
     maintainer='Tim Dawborn',
     maintainer_email='tim.dawborn@gmail.com',
     url='https://github.com/schwa-lab/libschwa-python',
-    licence='MIT',
+    license='MIT',
     package_dir={
         'schwa': 'schwa',
         'schwa.dr': 'schwa/dr',
