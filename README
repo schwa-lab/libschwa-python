@@ -1,0 +1,5 @@
+Python bindings for the Schwa Lab NLP tools (libschwa). libschwa needs to be installed before installing this package. It can be obtained from https://github.com/schwa-lab/libschwa.
+
+libschwa-python supports Python 2.7 and Python >= 3.3. It contains C extension modules so your environment needs to support the building of Python extensions.
+
+libschwa-python can be installed from PyPI (https://pypi.python.org/pypi/libschwa-python).
