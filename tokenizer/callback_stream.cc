@@ -49,6 +49,7 @@ PyCallObjectStream::init_method(const char *const method_name, const Method meth
   // Does an attr exist on the object with the name `method_name`?
   PyObject *func = PyObject_GetAttrString(_obj, method_name);
   if (func == nullptr) {
+    PyErr_Clear();
     if (method == Method::UNHANDLED)
       return;
 
