@@ -54,7 +54,7 @@ PyCallObjectStream::init_method(const char *const method_name, const Method meth
       return;
 
     // Fallback to the unhandled method, ensuring it exists.
-    if (_methods[to_underlying(Method::UNHANDLED)] == nullptr) {
+    if (_unhandled == nullptr) {
       std::ostringstream ss;
       ss << "Neither methods '" << method_name << "' or 'unhandled' exist.";
       throw TypeError(ss.str());
@@ -82,7 +82,7 @@ PyCallObjectStream::call(const Method method) {
   if (func == nullptr)
     ret = PyObject_CallFunction(_unhandled, (char *)"s", _method_names[to_underlying(method)]);
   else
-    ret = PyObject_CallFunctionObjArgs(func);
+    ret = PyObject_CallFunction(func, nullptr);
   if (ret == nullptr)
     throw PyRaise();
   Py_DECREF(ret);
@@ -120,7 +120,7 @@ PyCallObjectStream::add(Type type, const char *raw, size_t begin, size_t len, co
     if (norm)
       ret = PyObject_CallFunction(_unhandled, (char *)"sns#s", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen, norm);
     else
-      ret = PyObject_CallFunction(func, (char *)"sns#", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen);
+      ret = PyObject_CallFunction(_unhandled, (char *)"sns#", _method_names[to_underlying(Method::ADD)], pybegin, raw, pylen);
   }
   else {
     if (norm)

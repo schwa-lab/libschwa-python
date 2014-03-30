@@ -47,7 +47,7 @@ class TextTokenizer(object):
         pass
 
   def unhandled(self, method_name, *args):
-    log.info('%r unhandled during tokenization (%r)', method_name, args)
+    log.info('%r unhandled during tokenization (args=%s)', method_name, args)
 
   def error(self, start, raw):
     log.error('Error processing %r at %d', raw, start)
