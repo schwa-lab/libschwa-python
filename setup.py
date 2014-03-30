@@ -65,12 +65,13 @@ def tokenizer_ext():
 setup(
     name='libschwa-python',
     version=VERSION,
-    description='Schwa Lab NLP tools',
+    description='Python bindings for the Schwa Lab NLP tools (libschwa)',
     author='Schwa Lab',
     author_email='schwa-lab@it.usyd.edu.au',
     maintainer='Tim Dawborn',
     maintainer_email='tim.dawborn@gmail.com',
     url='https://github.com/schwa-lab/libschwa-python',
+    licence='MIT',
     package_dir={
         'schwa': 'schwa',
         'schwa.dr': 'schwa/dr',
@@ -94,5 +95,22 @@ setup(
     test_suite='nose.collector',
     tests_require=[
         'nose',
+    ],
+    categories=[
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        'Programming Language :: C++',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Text Processing :: Linguistic',
     ],
 )
