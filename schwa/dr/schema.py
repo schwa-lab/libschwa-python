@@ -160,7 +160,6 @@ class DocSchema(BaseSchema):
 
   def klass_by_serial(self, serial):
     for klass in self._klasses:
-      print(klass.serial, serial)
       if klass.serial == serial:
         return klass
 
