@@ -7,7 +7,6 @@ if `git tag --list | grep -q ${version}`; then
   echo "A tag for this version (${version}) already exists. Aborting."
   exit 1
 fi
-exit 0
 
 git checkout master
 git merge --no-ff develop
