@@ -34,6 +34,12 @@ class RelaxedDateTime(DateTime):
     except ValueError:
       return None
 
+  def to_wire(self, obj, rtfield, cur_store, doc):
+    try:
+      return super(RelaxedDateTime, self).to_wire(obj, rtfield, cur_store, doc)
+    except AttributeError:
+      return None
+
 
 class Text(Field):
   __slots__ = ('encoding', )
