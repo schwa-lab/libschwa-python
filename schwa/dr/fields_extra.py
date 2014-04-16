@@ -26,21 +26,6 @@ class DateTime(Field):
     return obj.isoformat()
 
 
-class RelaxedDateTime(DateTime):
-  ''' Tolerates malformed timestamps. '''
-  def from_wire(self, val, rtfield, cur_store, doc):
-    try:
-      return super(RelaxedDateTime, self).from_wire(val, rtfield, cur_store, doc)
-    except ValueError:
-      return None
-
-  def to_wire(self, obj, rtfield, cur_store, doc):
-    try:
-      return super(RelaxedDateTime, self).to_wire(obj, rtfield, cur_store, doc)
-    except AttributeError:
-      return None
-
-
 class Text(Field):
   __slots__ = ('encoding', )
 
@@ -48,7 +33,7 @@ class Text(Field):
     super(Text, self).__init__(**kwargs)
     self.encoding = encoding
     if not store_empty:
-        self.should_write = lambda val: val
+      self.should_write = lambda val: val
 
   def from_wire(self, val, rtfield, cur_store, doc):
     if val is None:
