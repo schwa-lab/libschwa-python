@@ -153,7 +153,11 @@ class Writer(object):
       field = f.defn.defn
       val = getattr(obj, f.defn.name)
       if field.should_write(val):
-        instance[f.field_id] = field.to_wire(val, f, store, doc)
+        try:
+          wire_val = field.to_wire(val, f, store, doc)
+        except Exception as e:
+          raise WriterException('An exception occurred while writing field "{0}" of "{1}": {2}'.format(f.defn.name, rtschema.defn.name, e))
+        instance[f.field_id] = wire_val
     return instance
 
   def _write_doc_instance(self, doc, rt):
