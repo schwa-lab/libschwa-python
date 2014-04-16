@@ -323,3 +323,23 @@ class TestDocWithAYZ(unittest.TestCase):
     correct.write(b'\x90')  # <instance>: 0-element array
 
     self.assertEqual(s, correct.getvalue())
+
+
+@unittest.skipUnless(six.PY3, 'Python 3 specific example')
+class TestHelpfulExceptions(unittest.TestCase):
+  def test_bad_text_field(self):
+    class X(dr.Ann):
+      text = dr.Text()
+
+    class Doc(dr.Doc):
+      xs = dr.Store(X)
+
+    d = Doc()
+    x = d.xs.create()
+    x.text = bytes(b'meow')
+
+    f = six.BytesIO()
+    writer = dr.Writer(f, Doc)
+    with self.assertRaisesRegexp(dr.WriterException, r'An exception occurred while writing field "text" of ".+": \'bytes\' object has no attribute \'encode\'') as e:
+      writer.write(d)
+    self.assertIsInstance(e.exception.__context__, AttributeError)
