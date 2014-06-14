@@ -54,8 +54,8 @@ class BaseSchema(object):
     return self._name
 
   def add_to_argparse(self, parser, prefix):
-    arg = prefix + '-' + self.name + '-serial'
-    parser.add_argument(arg, action=argparse_action(self), default=self.serial, help=self.help, metavar=self.serial)
+    arg = prefix + '--' + self.name
+    parser.add_argument(arg, action=argparse_action(self), default=self.serial, help=self.help, metavar=self.serial, type=str)
 
 
 class AnnSchema(BaseSchema):
@@ -83,10 +83,10 @@ class AnnSchema(BaseSchema):
   def fields(self):
     return six.itervalues(self._fields)
 
-  def add_to_argparse(self, parser, prefix='-'):
-    pre = prefix + '-' + self.name
+  def add_to_argparse(self, parser, prefix):
+    pre = prefix + '--' + self.name
     group = parser.add_argument_group(self.name, self.help)
-    group.add_argument(pre + '-serial', action=argparse_action(self), default=self.serial, metavar=self.serial)
+    group.add_argument(pre, action=argparse_action(self), default=self.serial, metavar=self.serial, type=str)
     for field in self.fields():
       field.add_to_argparse(group, pre)
 
@@ -182,10 +182,10 @@ class DocSchema(BaseSchema):
   def stores(self):
     return six.itervalues(self._stores)
 
-  def add_to_argparse(self, parser, prefix='-'):
-    pre = prefix + '-' + self.name
+  def add_to_argparse(self, parser, prefix='--dr'):
+    pre = prefix + '--' + self.name
     group = parser.add_argument_group(self.name, self.help)
-    group.add_argument(pre + '-serial', action=argparse_action(self), default=self.serial, metavar=self.serial)
+    group.add_argument(pre, action=argparse_action(self), default=self.serial, metavar=self.serial, type=str)
     for field in self.fields():
       field.add_to_argparse(group, pre)
     for store in self.stores():
