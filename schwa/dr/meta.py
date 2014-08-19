@@ -162,6 +162,66 @@ class Base(object):
         kwargs[k] = f.from_wire(v)
     return klass(**kwargs)
 
+  def __repr__(self, nesting=1, max_arg_len=400, max_list_len=200):
+    kwarg_len = -2
+    kwargs = []
+    items = sorted(self._dr_fields.items()) + sorted(self._dr_stores.items())
+    for k, f in items:
+      v = getattr(self, k, None)
+      if isinstance(v, StoreList):
+        if not v:
+          continue
+      else:
+        d = f.default()
+        if v is None and d is None:
+          continue
+        elif d is not None and v == d:
+          continue
+
+      is_list = isinstance(v, list)
+      if not is_list:
+        v = [v]
+      v_list_len = -2
+      v_strs = []
+      for el in v:
+        if isinstance(el, Ann) and nesting:
+          try:
+            v_strs.append(el.__repr__(nesting=nesting - 1,
+                                      max_arg_len=max_arg_len,
+                                      max_list_len=max_list_len))
+          except TypeError:
+            # __repr__ does not accept kwargs
+            v_strs.append(repr(el))
+        elif isinstance(el, Ann):
+          v_strs.append('{}(...)'.format(el.__class__.__name__))
+        elif isinstance(el, slice) and el.step in (1, None):
+          v_strs.append('slice({0.start}, {0.stop})'.format(el))
+        else:
+          v_strs.append(repr(el))
+        v_list_len += len(v_strs[-1])
+        if v_list_len > max_list_len:
+          # Early exit
+          break
+
+      if is_list:
+        v_str = ', '.join(v_strs)
+        if len(v_str) > max_list_len:
+          v_str = v_str[:max(0, max_list_len - 3)] + '...'
+        v_str = '[{}]'.format(v_str)
+      else:
+        v_str = v_strs[0]
+
+      kwargs.append('{}={}'.format(k, v_str))
+      kwarg_len += len(kwargs[-1]) + 2
+      if kwarg_len > max_arg_len:
+        # Early exit
+        break
+
+    kwargs = ', '.join(kwargs)
+    if len(kwargs) > max_arg_len:
+      kwargs = kwargs[:max(0, max_arg_len - 3)] + '...'
+    return '{}({})'.format(self.__class__.__name__, kwargs)
+
 
 class Ann(Base):
   __slots__ = ('_dr_index', )
