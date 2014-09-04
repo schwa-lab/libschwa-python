@@ -20,22 +20,22 @@ __all__ = ['Reader']
 
 
 class RTReader(object):
-  __slots__ = ('_doc_schema',)
+  __slots__ = ('_doc_schema', '_wire_version')
   Manager = RTManager
 
-  WIRE_VERSION = 2  # Version of the wire protocol the reader knows how to process.
+  WIRE_VERSION = 3  # Version of the wire protocol the reader knows how to process.
 
   def __init__(self, schema):
     self._doc_schema = schema
 
   def __call__(self, unpacker):
     try:
-      version = unpacker.unpack()
+      self._wire_version = unpacker.unpack()
     except msgpack.OutOfData:
       return None
     # Validate wire protocol version.
-    if version != self.WIRE_VERSION:
-      raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}. Ensure the input is not plain text.'.format(version, self.WIRE_VERSION))
+    if self._wire_version not in (self.WIRE_VERSION, 2):
+      raise ReaderException('Invalid wire format version. Stream has version {0} but I can read {1}. Ensure the input is not plain text.'.format(self._wire_version, self.WIRE_VERSION))
 
     rt = self.Manager()
     self._read_klasses(rt, unpacker.unpack())
@@ -47,7 +47,8 @@ class RTReader(object):
     # read <klasses> ::= [ <klass> ]
     #        <klass> ::= ( <klass_name>, <fields> )
     for k, (klass_name, fields) in enumerate(read):
-      klass_name = klass_name.decode('utf-8')
+      if self._wire_version == 2:
+        klass_name = klass_name.decode('utf-8')
       # Construct the RTAnn instance for the class.
       if klass_name == '__meta__':
         rtschema = rt.Ann(k, klass_name, self._doc_schema)
@@ -65,7 +66,9 @@ class RTReader(object):
         # Process fields map <field> ::= { <field_type> : <field_val> }.
         for key, val in six.iteritems(field):
           if key == FieldType.NAME:
-            field_name = val.decode('utf-8')
+            field_name = val
+            if self._wire_version == 2:
+              field_name = field_name.decode('utf-8')
           elif key == FieldType.POINTER_TO:
             points_to = val
             is_pointer = True
@@ -122,7 +125,8 @@ class RTReader(object):
     # read <stores> ::= [ <store> ]
     #       <store> ::= ( <store_name>, <klass_id>, <store_nelem> )
     for s, (store_name, klass_id, nelem) in enumerate(read):
-      store_name = store_name.decode('utf-8')
+      if self._wire_version == 2:
+        store_name = store_name.decode('utf-8')
       # Sanity check on the value of the klass_id.
       if klass_id >= len(rt.klasses):
         raise ReaderException('klass_id value {0} >= number of klasses ({1})'.format(klass_id, len(rt.klasses)))
@@ -236,13 +240,15 @@ class AutomagicRTReader(RTReader):
 class Reader(object):
   __slots__ = ('_doc_schema', '_unpacker', '_read_headers', '_automagic')
 
-  def __init__(self, istream, doc_schema_or_doc=None, automagic=False):
+  def __init__(self, istream, doc_schema_or_doc=None, automagic=False, encoding='utf-8'):
     """
     @param istream A file-like object to read from
     @param doc_schema_or_doc A DocSchema instance or a Doc subclass. If a Doc subclass is provided, the .schema() method is called to create the DocSchema instance.
     @param automagic Whether or not to instantiate unknown classes at runtime. False by default.
     """
-    self._unpacker = msgpack.Unpacker(istream, use_list=True)
+    if six.PY2 and isinstance(encoding, six.text_type):
+      encoding = encoding.encode('utf-8')
+    self._unpacker = msgpack.Unpacker(istream, use_list=True, encoding=encoding)
     self._automagic = automagic
     if doc_schema_or_doc is None:
       if not automagic:

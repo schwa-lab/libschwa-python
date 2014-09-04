@@ -3,6 +3,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 import dateutil.parser
+import six
 
 from .fields_core import Field
 
@@ -36,11 +37,11 @@ class Text(Field):
       self.should_write = lambda val: val
 
   def from_wire(self, val, rtfield, cur_store, doc):
-    if val is None:
-      return None
-    return val.decode(self.encoding)
+    if val is not None and isinstance(val, six.binary_type):
+      val = val.decode(self.encoding)
+    return val
 
   def to_wire(self, obj, rtfield, cur_store, doc):
-    if obj is None:
-      return None
-    return obj.encode(self.encoding)
+    if obj is not None and isinstance(obj, six.binary_type):
+      obj = obj.decode(self.encoding)
+    return obj

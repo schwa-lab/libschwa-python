@@ -40,7 +40,7 @@ class TestCase(unittest.TestCase):
     actual = serialize(doc, Doc)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x92')  # <klasses>: 2-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
