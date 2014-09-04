@@ -72,15 +72,15 @@ class TestCase(unittest.TestCase):
     self.assertTrue(hasattr(doc, 'sents'))
     self.assertEqual(len(doc.tokens), 5)
     self.assertEqual(len(doc.sents), 1)
-    self.assertEqual(doc.tokens[0].norm, b'The')
+    self.assertEqual(doc.tokens[0].norm, 'The')
     self.assertEqual(doc.tokens[0].span, slice(0, 3))
-    self.assertEqual(doc.tokens[1].norm, b'quick')
+    self.assertEqual(doc.tokens[1].norm, 'quick')
     self.assertEqual(doc.tokens[1].span, slice(4, 9))
-    self.assertEqual(doc.tokens[2].norm, b'brown')
+    self.assertEqual(doc.tokens[2].norm, 'brown')
     self.assertEqual(doc.tokens[2].span, slice(11, 16))
-    self.assertEqual(doc.tokens[3].norm, b'fox')
+    self.assertEqual(doc.tokens[3].norm, 'fox')
     self.assertEqual(doc.tokens[3].span, slice(17, 20))
-    self.assertEqual(doc.tokens[4].norm, b'.')
+    self.assertEqual(doc.tokens[4].norm, '.')
     self.assertEqual(doc.tokens[4].span, slice(20, 21))
     self.assertEqual(doc.sents[0].span, slice(0, 5))
     self.assertListEqual(doc.adjectives, doc.tokens[1:3])
@@ -91,6 +91,28 @@ class TestCase(unittest.TestCase):
     orig = orig.getvalue()
     rewritten = rewritten.getvalue()
     self.assertEqual(orig, rewritten)
+
+  def test_dr_fields_and_dr_stores(self):
+    orig = six.BytesIO()
+    write(orig)
+    orig.seek(0)
+
+    reader = dr.Reader(orig, automagic=True)
+    doc = reader.next()
+    doc = reader.next()
+    self.assertTupleEqual(('adjectives', 'empty'), tuple(doc._dr_fields))
+    self.assertTupleEqual(('sents', 'tokens'), tuple(doc._dr_stores))
+
+    t = doc.tokens[0]
+    self.assertTupleEqual(('empty', 'norm', 'span'), tuple(t.__class__._dr_fields))
+    self.assertTupleEqual((), tuple(t.__class__._dr_stores))
+
+    s = doc.sents[0]
+    self.assertTupleEqual(('span',), tuple(s.__class__._dr_fields))
+    self.assertTupleEqual((), tuple(s.__class__._dr_stores))
+
+    self.assertEqual("Token(norm=" + repr('The') + ", span=slice(0, 3))", repr(t))
+    self.assertEqual('Sent(span=slice(0, 5))', repr(s))
 
   def test_schema(self):
     orig = six.BytesIO()

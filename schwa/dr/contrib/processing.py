@@ -7,7 +7,7 @@ import sys
 import threading
 
 from schwa.dr import Reader, Writer
-from six.move import xrange
+from six.moves import xrange
 
 try:
   import zmq

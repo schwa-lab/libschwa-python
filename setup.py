@@ -66,7 +66,7 @@ def tokenizer_ext():
 
 
 README = read_local_file('README')
-VERSION = read_local_file('VERSION')
+VERSION = __import__('schwa').__version__
 setup(
     name='libschwa-python',
     version=VERSION,

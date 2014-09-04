@@ -40,7 +40,7 @@ class TestCase(unittest.TestCase):
 
     correct = six.BytesIO()
     correct.write(
-    b'\x02'
+    b'\x03'
     b'\x93'
       b'\x92'
         b'\xa8__meta__'

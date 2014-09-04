@@ -17,7 +17,7 @@ __all__ = ['Writer']
 class Writer(object):
   __slots__ = ('_ostream', '_packer', '_doc_schema')
 
-  WIRE_VERSION = 2  # Version of the wire protocol the reader knows how to process.
+  WIRE_VERSION = 3  # Version of the wire protocol the reader knows how to process.
 
   def __init__(self, ostream, doc_schema_or_doc):
     """
@@ -33,7 +33,7 @@ class Writer(object):
       self._doc_schema = doc_schema_or_doc.schema()
     else:
       raise TypeError('Invalid value for doc_schema_or_doc. Must be either a DocSchema instance or a Doc subclass')
-    self._packer = msgpack.Packer()
+    self._packer = msgpack.Packer(use_bin_type=True)
 
   @property
   def doc_schema(self):
