@@ -104,12 +104,12 @@ class TestCase(unittest.TestCase):
     self.assertTupleEqual(('sents', 'tokens'), tuple(doc._dr_stores))
 
     t = doc.tokens[0]
-    self.assertTupleEqual(('empty', 'norm', 'span'), tuple(t._dr_fields))
-    self.assertTupleEqual((), tuple(t._dr_stores))
+    self.assertTupleEqual(('empty', 'norm', 'span'), tuple(t.__class__._dr_fields))
+    self.assertTupleEqual((), tuple(t.__class__._dr_stores))
 
     s = doc.sents[0]
-    self.assertTupleEqual(('span',), tuple(s._dr_fields))
-    self.assertTupleEqual((), tuple(s._dr_stores))
+    self.assertTupleEqual(('span',), tuple(s.__class__._dr_fields))
+    self.assertTupleEqual((), tuple(s.__class__._dr_stores))
 
     self.assertEqual("Token(norm=" + repr('The') + ", span=slice(0, 3))", repr(t))
     self.assertEqual('Sent(span=slice(0, 5))', repr(s))
