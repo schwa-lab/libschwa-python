@@ -187,16 +187,30 @@ class AutomagicRTReader(RTReader):
     return rt
 
   def _do_automagic(self, rt):
-    for klass in rt.klasses:
-      if klass.is_lazy():
-        self._automagic_klass(klass)
-    for klass in rt.klasses:
-      for store in klass.stores:
-        if store.is_lazy():
-          self._automagic_store(store, rt.doc)
-      for field in klass.fields:
-        if field.is_lazy():
-          self._automagic_field(field, klass, rt)
+    automagic_rtklasses = []
+    # Instantiate a class for all of the lazy classes.
+    for rtklass in rt.klasses:
+      if rtklass.is_lazy():
+        self._automagic_klass(rtklass)
+        automagic_rtklasses.append(rtklass)
+      elif rtklass.defn is self._doc_schema:  # Keep track of the automagic document class as it also needs to be backfilled.
+        automagic_rtklasses.append(rtklass)
+    # Instantiate all of the lazy stores and fields.
+    for rtklass in rt.klasses:
+      for rtstore in rtklass.stores:
+        if rtstore.is_lazy():
+          self._automagic_store(rtstore, rt.doc)
+      for rtfield in rtklass.fields:
+        if rtfield.is_lazy():
+          self._automagic_field(rtfield, rtklass, rt)
+
+    # Back-fill the values of _dr_fields and _dr_stores on the lazily created classes.
+    for rtklass in automagic_rtklasses:
+      klass = rtklass.defn.defn
+      for rtstore in sorted(rtklass.stores, key=lambda rtstore: rtstore.serial):
+        klass._dr_stores[rtstore.serial] = rtstore.defn.defn
+      for rtfield in sorted(rtklass.fields, key=lambda rtfield: rtfield.serial):
+        klass._dr_fields[rtfield.serial] = rtfield.defn.defn
 
   def _automagic_klass(self, rtklass):
     klass = get_or_create_klass(self._automagic_count, rtklass.serial)

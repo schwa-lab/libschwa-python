@@ -92,6 +92,28 @@ class TestCase(unittest.TestCase):
     rewritten = rewritten.getvalue()
     self.assertEqual(orig, rewritten)
 
+  def test_dr_fields_and_dr_stores(self):
+    orig = six.BytesIO()
+    write(orig)
+    orig.seek(0)
+
+    reader = dr.Reader(orig, automagic=True)
+    doc = reader.next()
+    doc = reader.next()
+    self.assertTupleEqual(('adjectives', 'empty'), tuple(doc._dr_fields))
+    self.assertTupleEqual(('sents', 'tokens'), tuple(doc._dr_stores))
+
+    t = doc.tokens[0]
+    self.assertTupleEqual(('empty', 'norm', 'span'), tuple(t._dr_fields))
+    self.assertTupleEqual((), tuple(t._dr_stores))
+
+    s = doc.sents[0]
+    self.assertTupleEqual(('span',), tuple(s._dr_fields))
+    self.assertTupleEqual((), tuple(s._dr_stores))
+
+    self.assertEqual("Token(norm=" + repr('The') + ", span=slice(0, 3))", repr(t))
+    self.assertEqual('Sent(span=slice(0, 5))', repr(s))
+
   def test_schema(self):
     orig = six.BytesIO()
     write(orig)
