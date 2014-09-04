@@ -149,7 +149,7 @@ class RTReader(object):
       if not rtstore.is_lazy():
         store_stored_type = defn.stored_type
         if rt.klasses[klass_id].is_lazy():
-          raise ReaderException('Store {0!r} points to {1} but the store on the stream points to a lazy type.'.format(store_name, store_stored_type))
+          raise ReaderException('Store {0!r} points to annotation type {1!r} but the store on the stream points to a lazy type ({2!r}).'.format(store_name, store_stored_type.name, rt.klasses[klass_id].serial))
         stored_klass_type = rt.klasses[klass_id].defn
         if store_stored_type != stored_klass_type:
           raise ReaderException('Store {0!r} points to {1} but the stream says it points to {2}.'.format(store_name, store_stored_type, stored_klass_type))
