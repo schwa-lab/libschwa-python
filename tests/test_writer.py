@@ -78,7 +78,7 @@ class TestDocWithField(unittest.TestCase):
     s = serialise(d, DocWithField)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x91')  # <klasses>: 1-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: 8-bytes of utf-8 encoded "__meta__"
@@ -97,7 +97,7 @@ class TestDocWithField(unittest.TestCase):
     s = serialise(d, DocWithField)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x91')  # <klasses>: 1-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -120,7 +120,7 @@ class TestDocWithFieldSerial(unittest.TestCase):
     s = serialise(d, DocWithFieldWithSerial)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x91')  # <klasses>: 1-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -139,7 +139,7 @@ class TestDocWithFieldSerial(unittest.TestCase):
     s = serialise(d, DocWithFieldWithSerial)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x91')  # <klasses>: 1-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -162,7 +162,7 @@ class TestDocWithA(unittest.TestCase):
     s = serialise(d, DocWithA)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x92')  # <klasses>: 2-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -194,7 +194,7 @@ class TestDocWithA(unittest.TestCase):
     s = serialise(d, DocWithA)
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x92')  # <klasses>: 2-element array
     correct.write(b'\x92')  # <klass>: 2-element array
     correct.write(b'\xa8__meta__')  # <klass_name>: utf-8 encoded "__meta__"
@@ -236,7 +236,7 @@ class TestDocWithAYZ(unittest.TestCase):
       store_ids[store_schema.serial] = i
 
     correct = six.BytesIO()
-    correct.write(b'\x02')  # <wire_version>
+    correct.write(b'\x03')  # <wire_version>
     correct.write(b'\x94')  # <klasses>: 4-element array
     correct.write(b'\x92')  # <klass>: 2-element array
 
@@ -323,23 +323,3 @@ class TestDocWithAYZ(unittest.TestCase):
     correct.write(b'\x90')  # <instance>: 0-element array
 
     self.assertEqual(s, correct.getvalue())
-
-
-@unittest.skipUnless(six.PY3, 'Python 3 specific example')
-class TestHelpfulExceptions(unittest.TestCase):
-  def test_bad_text_field(self):
-    class X(dr.Ann):
-      text = dr.Text()
-
-    class Doc(dr.Doc):
-      xs = dr.Store(X)
-
-    d = Doc()
-    x = d.xs.create()
-    x.text = bytes(b'meow')
-
-    f = six.BytesIO()
-    writer = dr.Writer(f, Doc)
-    with self.assertRaisesRegexp(dr.WriterException, r'An exception occurred while writing field "text" of ".+": \'bytes\' object has no attribute \'encode\'') as e:
-      writer.write(d)
-    self.assertIsInstance(e.exception.__context__, AttributeError)

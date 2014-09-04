@@ -103,8 +103,6 @@ class Field(BaseField):
     return val
 
   def to_wire(self, obj, rtfield, cur_store, doc):
-    if isinstance(obj, six.text_type):
-      obj = obj.encode('utf-8')
     return obj
 
   def resolve_klasses(self):
